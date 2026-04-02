@@ -1,32 +1,28 @@
 name: Deploy to Firebase Hosting
-
 on:
   push:
     branches:
       - main
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # เพิ่มไว้เผื่อ Action เวอร์ชั่นเก่ารองรับ Node 22+
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
+          node-version: 22 # ใช้ Node 22 ให้เหมือนโปรเจ็คแรก
+          cache: yarn
       - name: Install dependencies
-        run: yarn install
-
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-
+        run: yarn install --frozen-lockfile
       - name: Build web app
-        run: yarn expo export --platform web
-
+        run: npx expo export --platform web
       - name: Deploy to Firebase Hosting
-        run: firebase deploy --token ${{ secrets.FIREBASE_TOKEN }}
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: vtuber-92546
+          channelId: live
