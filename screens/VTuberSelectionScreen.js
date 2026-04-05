@@ -1,27 +1,48 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
-import { vtuberData } from '../data/vtuberData';
+import { useResponsive } from '../hooks/useResponsive';
 import SelectionModal from '../components/SelectionModal';
+import { fetchVtubersFromDatabase } from '../services/vtuberDatabaseService';
 
 export default function VTuberSelectionScreen({ route, navigation }) {
-    const { playerId } = route.params;
-    const [selectedVTuber, setSelectedVTuber] = useState(null);
+    const responsive = useResponsive();
+    const { gameId } = route.params || {};
+    const [selectedCharacter, setSelectedCharacter] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
+    const [characters, setCharacters] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const handleSelect = (vtuber) => {
-        setSelectedVTuber(vtuber);
+    useEffect(() => {
+        loadCharacters();
+    }, []);
+
+    const loadCharacters = async () => {
+        setIsLoading(true);
+        try {
+            const data = await fetchVtubersFromDatabase();
+            setCharacters(data);
+        } catch (error) {
+            console.error('Error loading characters:', error);
+            setCharacters([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSelect = (character) => {
+        setSelectedCharacter(character);
         setModalVisible(true);
     };
 
     const confirmSelection = () => {
         setModalVisible(false);
-        navigation.navigate('GameBoard', { playerId, myIdentity: selectedVTuber });
+        navigation.navigate('SelectVTuber', { gameId, character: selectedCharacter });
     };
 
-    const renderVTuber = ({ item }) => (
+    const renderCharacter = ({ item }) => (
         <TouchableOpacity style={styles.card} onPress={() => handleSelect(item)}>
             <View style={styles.avatarCircle}>
                 <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
@@ -36,7 +57,7 @@ export default function VTuberSelectionScreen({ route, navigation }) {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <ChevronLeft color={Colors.text} size={28} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{playerId}</Text>
+                <Text style={styles.headerTitle}>WHO ARE YOU?</Text>
                 <View style={{ width: 28 }} />
             </View>
 
@@ -44,18 +65,31 @@ export default function VTuberSelectionScreen({ route, navigation }) {
                 <Text style={styles.title}>WHO ARE YOU?</Text>
             </View>
 
-            <FlatList
-                data={vtuberData}
-                renderItem={renderVTuber}
-                keyExtractor={item => item.id}
-                numColumns={2}
-                contentContainerStyle={styles.grid}
-                columnWrapperStyle={styles.row}
-            />
+            {isLoading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={styles.loadingText}>Loading Characters...</Text>
+                </View>
+            ) : (
+                <FlatList
+                    data={characters}
+                    renderItem={renderCharacter}
+                    keyExtractor={item => item.id}
+                    numColumns={responsive.isTablet || responsive.isWeb ? (responsive.width > 1200 ? 4 : 3) : 2}
+                    contentContainerStyle={styles.grid}
+                    columnWrapperStyle={styles.row}
+                    key={responsive.isTablet || responsive.isWeb ? (responsive.width > 1200 ? 4 : 3) : 2}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>No Characters available</Text>
+                        </View>
+                    }
+                />
+            )}
 
-            <SelectionModal 
+            <SelectionModal
                 visible={modalVisible}
-                vtuber={selectedVTuber}
+                vtuber={selectedCharacter}
                 onConfirm={confirmSelection}
                 onCancel={() => setModalVisible(false)}
             />
@@ -93,10 +127,14 @@ const styles = StyleSheet.create({
     grid: {
         paddingHorizontal: 30,
         paddingBottom: 20,
+        maxWidth: 1400,
+        alignSelf: 'center',
+        width: '100%',
     },
     row: {
         justifyContent: 'space-between',
         marginBottom: 20,
+        gap: 10,
     },
     card: {
         width: '45%',
@@ -125,5 +163,25 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: 'bold',
         textAlign: 'center',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        color: Colors.text,
+        fontSize: 16,
+        marginTop: 12,
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    emptyText: {
+        color: Colors.text,
+        fontSize: 16,
     },
 });

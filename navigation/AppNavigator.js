@@ -3,7 +3,11 @@ import { createStackNavigator } from '@react-navigation/stack';
 import SplashScreen from '../screens/SplashScreen';
 import HomeScreen from '../screens/HomeScreen';
 import VTuberSelectionScreen from '../screens/VTuberSelectionScreen';
+import SelectVTuberScreen from '../screens/SelectVTuberScreen';
+import ResultSelectionScreen from '../screens/ResultSelectionScreen';
 import GameBoardScreen from '../screens/GameBoardScreen';
+import AdminDataScreen from '../screens/AdminDataScreen';
+import SelectionLogScreen from '../screens/SelectionLogScreen';
 
 const Stack = createStackNavigator();
 
@@ -19,7 +23,11 @@ export default function AppNavigator() {
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="VTuberSelection" component={VTuberSelectionScreen} />
+      <Stack.Screen name="SelectVTuber" component={SelectVTuberScreen} />
+      <Stack.Screen name="ResultSelection" component={ResultSelectionScreen} />
       <Stack.Screen name="GameBoard" component={GameBoardScreen} />
+      <Stack.Screen name="AdminData" component={AdminDataScreen} />
+      <Stack.Screen name="SelectionLog" component={SelectionLogScreen} />
     </Stack.Navigator>
   );
 }

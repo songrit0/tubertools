@@ -12,3 +12,14 @@ export const vtuberData = [
   { id: '11', name: 'VTUBER 11', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=V11' },
   { id: '12', name: 'VTUBER 12', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=V12' },
 ];
+
+
+export const vtuberDataselect = [
+ { vtuberDataid : '1' ,selectedvtuberDataids:['1','12'] },
+ { vtuberDataid : '2' ,selectedvtuberDataids:['2','11'] },
+ { vtuberDataid : '3' ,selectedvtuberDataids:['3','10'] },
+ { vtuberDataid : '4' ,selectedvtuberDataids:['4','9'] },
+ { vtuberDataid : '5' ,selectedvtuberDataids:['5','8'] },
+ { vtuberDataid : '6' ,selectedvtuberDataids:['6','7'] },
+]
+
