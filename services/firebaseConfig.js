@@ -4,13 +4,14 @@ import { getAuth } from 'firebase/auth';
 
 // TODO: Replace with your Firebase project configuration
 const firebaseConfig = {
- apiKey: "AIzaSyCtiln7kHTUmXPxLxc0l3_vRzgZAsfTaO0",
-  authDomain: "quest-17ccc.firebaseapp.com",
-  projectId: "quest-17ccc",
-  storageBucket: "quest-17ccc.firebasestorage.app",
-  messagingSenderId: "190230033932",
-  appId: "1:190230033932:web:188a6d777d0214c4fc2029",
-  measurementId: "G-T6YRNF9FJY"
+  apiKey: "AIzaSyC95K5rmqsZbmPmSDvgGeWgqbQvOll4X60",
+  authDomain: "tuber-tools-266cb.firebaseapp.com",
+  databaseURL: "https://tuber-tools-266cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tuber-tools-266cb",
+  storageBucket: "tuber-tools-266cb.firebasestorage.app",
+  messagingSenderId: "519614170930",
+  appId: "1:519614170930:web:243813c3bcba9df196b92b",
+  measurementId: "G-RESMP2HBCL"
 };
 
 // Initialize Firebase
