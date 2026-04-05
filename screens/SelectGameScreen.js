@@ -16,8 +16,8 @@ const GAMES = [
   {
     id: '12vtuber',
     title: '12VTuber',
-    description: 'เลือก VTuber ที่คุณเป็น และเลือก VTuber ที่คุณอยากให้ชนะ',
-    emoji: '🎭',
+    description: 'ศึก 12 VTuber',
+    emoji: '🗿',
     screen: 'VTuberSelection',
     tag: 'LIVE',
   },
