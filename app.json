@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "whats-are-these",
-    "slug": "whats-are-these",
+    "name": "vtuber-tools",
+    "slug": "vtuber-tools",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
