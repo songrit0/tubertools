@@ -1,283 +1,227 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Image, ScrollView, Pressable } from 'react-native';
+import { CheckCircle, Clock } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
-import { useResponsive } from '../hooks/useResponsive';
 import { subscribeToUserSelections } from '../services/vtuberDatabaseService';
 
 export default function ResultSelectionScreen({ route, navigation }) {
-    const responsive = useResponsive();
-    const { gameId, character, selectedVTuber, alreadySelected } = route.params || {};
-    const [currentSelection, setCurrentSelection] = useState(selectedVTuber);
-    const [isLoading, setIsLoading] = useState(false);
+  const { gameId, character, selectedVTuber, alreadySelected } = route.params || {};
+  const [currentSelection, setCurrentSelection] = useState(selectedVTuber);
 
-    useEffect(() => {
-        // Set up real-time listener for this user's selection
-        console.log('Setting up real-time listener for selection');
-        const unsubscribe = subscribeToUserSelections((selections) => {
-            console.log('Selections updated, total:', selections.length);
-            // Find the selection for this game and character
-            const mySelection = selections.find(
-                sel => sel.gameId === gameId && sel.character?.id === character?.id
-            );
+  useEffect(() => {
+    const unsubscribe = subscribeToUserSelections((selections) => {
+      const mine = selections.find(
+        (s) => s.gameId === gameId && s.character?.id === character?.id
+      );
+      if (mine) {
+        setCurrentSelection(mine.selectedVTuber);
+      } else {
+        setTimeout(() => {
+          navigation.replace('SelectVTuber', { gameId, character });
+        }, 500);
+      }
+    });
+    return unsubscribe;
+  }, [gameId, character?.id]);
 
-            if (mySelection) {
-                console.log('Found my selection:', mySelection.selectedVTuber?.name);
-                setCurrentSelection(mySelection.selectedVTuber);
-            } else {
-                console.log('My selection was deleted! Redirecting to SELECT VTUBER');
-                // Selection was deleted (round ended), redirect back to SelectVTuber
-                setTimeout(() => {
-                    console.log('Navigating back to SelectVTuber');
-                    navigation.replace('SelectVTuber', { gameId, character });
-                }, 500);
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Navbar */}
+      <View style={styles.navbar}>
+        <View style={styles.navInner}>
+          <Text style={styles.navLogo}>12VTuber</Text>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Status Card */}
+        <View style={styles.statusCard}>
+          <View style={styles.statusIcon}>
+            {alreadySelected
+              ? <Clock color={Colors.accent} size={36} />
+              : <CheckCircle color="#1DB954" size={36} />
             }
-        });
+          </View>
+          <Text style={styles.statusTitle}>
+            {alreadySelected ? 'เลือกไปแล้ว' : 'บันทึกเรียบร้อย!'}
+          </Text>
+          <Text style={styles.statusDesc}>
+            {alreadySelected
+              ? 'คุณได้ทำการเลือกไปแล้วก่อนหน้านี้'
+              : 'การเลือกของคุณถูกบันทึกแล้ว รอผลได้เลย'}
+          </Text>
+        </View>
 
-        return () => {
-            console.log('Cleaning up listener');
-            unsubscribe();
-        };
-    }, [gameId, character?.id, navigation]);
+        {/* Summary */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>สรุปการเลือก</Text>
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.content}>
-                <View style={styles.headerSection}>
-                    <Text style={styles.successTitle}>
-                        {alreadySelected ? 'ALREADY SELECTED' : 'SELECTION COMPLETE!'}
-                    </Text>
-                    <Text style={[styles.successSubtitle, alreadySelected && styles.alreadySelectedSubtitle]}>
-                        {alreadySelected ? '✓✓' : '✓'}
-                    </Text>
-                </View>
+          {/* Playing As */}
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>ฉันคือ</Text>
+            <View style={styles.personCard}>
+              <Image source={{ uri: character?.imageUrl }} style={styles.personAvatar} />
+              <Text style={styles.personName}>{character?.name}</Text>
+            </View>
+          </View>
 
-                {/* Character Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionLabel}>PLAYING AS</Text>
-                    <View style={styles.infoCard}>
-                        <View style={styles.avatarContainer}>
-                            <Image
-                                source={{ uri: character?.imageUrl }}
-                                style={styles.avatar}
-                            />
-                        </View>
-                        <View style={styles.infoContent}>
-                            <Text style={styles.name}>{character?.name}</Text>
-                            <Text style={styles.id}>ID: {character?.id}</Text>
-                        </View>
-                    </View>
-                </View>
+          <View style={styles.divider} />
 
-                {/* Arrow Down */}
-                <View style={styles.arrowSection}>
-                    <Text style={styles.arrow}>↓</Text>
-                </View>
+          {/* Selected */}
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>ฉันเลือก</Text>
+            <View style={styles.personCard}>
+              <Image source={{ uri: currentSelection?.imageUrl }} style={styles.personAvatar} />
+              <Text style={styles.personName}>{currentSelection?.name}</Text>
+            </View>
+          </View>
+        </View>
 
-                {/* Selected VTuber Section */}
-                <View style={styles.section}>
-                    <View style={styles.labelWithIndicator}>
-                        <Text style={styles.sectionLabel}>SELECTED VTUBER</Text>
-                    </View>
-                    <View style={styles.infoCard}>
-                        <View style={styles.avatarContainer}>
-                            <Image
-                                source={{ uri: currentSelection?.imageUrl }}
-                                style={styles.avatar}
-                            />
-                        </View>
-                        <View style={styles.infoContent}>
-                            <Text style={styles.name}>{currentSelection?.name}</Text>
-                            <Text style={styles.id}>ID: {currentSelection?.id}</Text>
-                        </View>
-                    </View>
-                </View>
-
-
-            </ScrollView>
-        </SafeAreaView>
-    );
+        {/* Info */}
+        <View style={styles.infoBox}>
+          <View style={styles.liveDot} />
+          <Text style={styles.infoText}>รอผลการแข่งขัน — หน้านี้จะอัปเดตอัตโนมัติ</Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    content: {
-        paddingHorizontal: 20,
-        paddingVertical: 30,
-        maxWidth: 1000,
-        alignSelf: 'center',
-        width: '100%',
-    },
-    headerSection: {
-        alignItems: 'center',
-        marginBottom: 30,
-    },
-    successTitle: {
-        color: Colors.text,
-        fontSize: 28,
-        fontWeight: 'bold',
-        letterSpacing: 1.5,
-        marginBottom: 8,
-    },
-    successSubtitle: {
-        color: '#1DB954',
-        fontSize: 48,
-        fontWeight: 'bold',
-    },
-    alreadySelectedSubtitle: {
-        color: '#0099FF',
-    },
-    section: {
-        marginBottom: 20,
-    },
-    labelWithIndicator: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-        paddingHorizontal: 4,
-    },
-    sectionLabel: {
-        color: Colors.cardBg,
-        fontSize: 12,
-        fontWeight: 'bold',
-        letterSpacing: 1.2,
-        marginBottom: 0,
-        paddingHorizontal: 0,
-    },
-    liveIndicator: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: Colors.surface,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-    },
-    liveDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#1DB954',
-    },
-    liveText: {
-        color: '#1DB954',
-        fontSize: 9,
-        fontWeight: 'bold',
-        letterSpacing: 0.5,
-    },
-    infoCard: {
-        backgroundColor: Colors.surface,
-        borderRadius: 12,
-        padding: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
-    },
-    avatarContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        overflow: 'hidden',
-        borderWidth: 2,
-        borderColor: Colors.text,
-    },
-    avatar: {
-        width: '100%',
-        height: '100%',
-    },
-    infoContent: {
-        flex: 1,
-    },
-    name: {
-        color: Colors.text,
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 4,
-    },
-    id: {
-        color: Colors.cardBg,
-        fontSize: 11,
-    },
-    arrowSection: {
-        alignItems: 'center',
-        marginVertical: 16,
-    },
-    arrow: {
-        color: Colors.text,
-        fontSize: 32,
-        fontWeight: 'bold',
-    },
-    gameIdSection: {
-        backgroundColor: Colors.surface,
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        marginBottom: 30,
-        borderWidth: 1,
-        borderColor: Colors.cardBg,
-    },
-    gameIdLabel: {
-        color: Colors.cardBg,
-        fontSize: 11,
-        fontWeight: 'bold',
-        letterSpacing: 1,
-        marginBottom: 8,
-    },
-    gameIdValue: {
-        color: Colors.text,
-        fontSize: 18,
-        fontWeight: 'bold',
-        letterSpacing: 2,
-    },
-    buttonGroup: {
-        gap: 12,
-        marginTop: 20,
-    },
-    playButton: {
-        backgroundColor: '#1DB954',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 8,
-    },
-    selectAgainButton: {
-        backgroundColor: '#FF6B9D',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 8,
-    },
-    homeButton: {
-        backgroundColor: Colors.surface,
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: '#FF6B9D',
-    },
-    buttonText: {
-        color: Colors.text,
-        fontSize: 14,
-        fontWeight: 'bold',
-        letterSpacing: 1,
-    },
+  container: { flex: 1, backgroundColor: Colors.background },
+
+  navbar: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+    backgroundColor: '#181818',
+  },
+  navInner: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    maxWidth: 900,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  navLogo: { color: Colors.accent, fontSize: 20, fontWeight: 'bold', letterSpacing: 1 },
+
+  scroll: {
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    maxWidth: 600,
+    alignSelf: 'center',
+    width: '100%',
+    gap: 16,
+  },
+
+  // Status
+  statusCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    marginBottom: 4,
+  },
+  statusIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#242424',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  statusTitle: {
+    color: Colors.text,
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  statusDesc: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // Summary
+  summaryCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  summaryTitle: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    marginBottom: 16,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  rowLabel: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    minWidth: 60,
+  },
+  personCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#141414',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    flex: 1,
+    marginLeft: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  personAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  personName: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#2A2A2A',
+    marginVertical: 4,
+  },
+
+  // Info
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1A2A1A',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#1DB95440',
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#1DB954',
+  },
+  infoText: {
+    color: '#1DB954',
+    fontSize: 13,
+    flex: 1,
+  },
 });

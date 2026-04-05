@@ -1,6 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import SplashScreen from '../screens/SplashScreen';
+import SelectGameScreen from '../screens/SelectGameScreen';
 import HomeScreen from '../screens/HomeScreen';
 import VTuberSelectionScreen from '../screens/VTuberSelectionScreen';
 import SelectVTuberScreen from '../screens/SelectVTuberScreen';
@@ -21,6 +22,7 @@ export default function AppNavigator() {
       }}
     >
       <Stack.Screen name="Splash" component={SplashScreen} />
+      <Stack.Screen name="SelectGame" component={SelectGameScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="VTuberSelection" component={VTuberSelectionScreen} />
       <Stack.Screen name="SelectVTuber" component={SelectVTuberScreen} />

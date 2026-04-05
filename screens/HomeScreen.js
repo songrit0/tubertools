@@ -41,7 +41,7 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <View style={styles.titleContainer}>
-                <Text style={styles.title}>SELECT GAME</Text>
+                <Text style={styles.title}>12VTuber</Text>
             </View>
 
             <FlatList

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  View, Text, StyleSheet, FlatList, Pressable,
+  Image, ActivityIndicator, SafeAreaView,
+} from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
@@ -8,180 +10,215 @@ import SelectionModal from '../components/SelectionModal';
 import { fetchVtubersFromDatabase } from '../services/vtuberDatabaseService';
 
 export default function VTuberSelectionScreen({ route, navigation }) {
-    const responsive = useResponsive();
-    const { gameId } = route.params || {};
-    const [selectedCharacter, setSelectedCharacter] = useState(null);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [characters, setCharacters] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+  const responsive = useResponsive();
+  const { gameId } = route.params || {};
+  const [selectedCharacter, setSelectedCharacter] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [characters, setCharacters] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        loadCharacters();
-    }, []);
+  const numColumns = responsive.width >= 1200 ? 6
+    : responsive.width >= 900 ? 5
+    : responsive.width >= 600 ? 4
+    : 3;
 
-    const loadCharacters = async () => {
-        setIsLoading(true);
-        try {
-            const data = await fetchVtubersFromDatabase();
-            setCharacters(data);
-        } catch (error) {
-            console.error('Error loading characters:', error);
-            setCharacters([]);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+  useEffect(() => {
+    fetchVtubersFromDatabase()
+      .then(setCharacters)
+      .catch(() => setCharacters([]))
+      .finally(() => setIsLoading(false));
+  }, []);
 
-    const handleSelect = (character) => {
-        setSelectedCharacter(character);
-        setModalVisible(true);
-    };
+  const handleSelect = (character) => {
+    setSelectedCharacter(character);
+    setModalVisible(true);
+  };
 
-    const confirmSelection = () => {
-        setModalVisible(false);
-        navigation.navigate('SelectVTuber', { gameId, character: selectedCharacter });
-    };
+  const confirmSelection = () => {
+    setModalVisible(false);
+    navigation.navigate('SelectVTuber', { gameId, character: selectedCharacter });
+  };
 
-    const renderCharacter = ({ item }) => (
-        <TouchableOpacity style={styles.card} onPress={() => handleSelect(item)}>
-            <View style={styles.avatarCircle}>
-                <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
-            </View>
-            <Text style={styles.nameText}>{item.name}</Text>
-        </TouchableOpacity>
-    );
+  const renderCharacter = ({ item }) => (
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => handleSelect(item)}
+    >
+      <View style={styles.avatarWrapper}>
+        <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
+      </View>
+      <Text style={styles.nameText} numberOfLines={1}>{item.name}</Text>
+    </Pressable>
+  );
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <ChevronLeft color={Colors.text} size={28} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>WHO ARE YOU?</Text>
-                <View style={{ width: 28 }} />
-            </View>
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Navbar */}
+      <View style={styles.navbar}>
+        <View style={styles.navInner}>
+          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <ChevronLeft color={Colors.text} size={20} />
+            <Text style={styles.backText}>กลับ</Text>
+          </Pressable>
+          <Text style={styles.navTitle}>WHO ARE YOU?</Text>
+          <View style={{ width: 70 }} />
+        </View>
+      </View>
 
-            <View style={styles.titleArea}>
-                <Text style={styles.title}>WHO ARE YOU?</Text>
-            </View>
+      {/* Page Header */}
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageTitle}>เลือกตัวละครของคุณ</Text>
+        <Text style={styles.pageSubtitle}>คุณเป็นใครใน 12VTuber?</Text>
+      </View>
 
-            {isLoading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={Colors.primary} />
-                    <Text style={styles.loadingText}>Loading Characters...</Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={characters}
-                    renderItem={renderCharacter}
-                    keyExtractor={item => item.id}
-                    numColumns={responsive.isTablet || responsive.isWeb ? (responsive.width > 1200 ? 4 : 3) : 2}
-                    contentContainerStyle={styles.grid}
-                    columnWrapperStyle={styles.row}
-                    key={responsive.isTablet || responsive.isWeb ? (responsive.width > 1200 ? 4 : 3) : 2}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>No Characters available</Text>
-                        </View>
-                    }
-                />
-            )}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.accent} />
+          <Text style={styles.loadingText}>กำลังโหลด...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={characters}
+          renderItem={renderCharacter}
+          keyExtractor={(item) => item.id}
+          numColumns={numColumns}
+          key={numColumns}
+          contentContainerStyle={styles.grid}
+          columnWrapperStyle={styles.row}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>ไม่พบตัวละคร</Text>
+          }
+        />
+      )}
 
-            <SelectionModal
-                visible={modalVisible}
-                vtuber={selectedCharacter}
-                onConfirm={confirmSelection}
-                onCancel={() => setModalVisible(false)}
-            />
-        </SafeAreaView>
-    );
+      <SelectionModal
+        visible={modalVisible}
+        vtuber={selectedCharacter}
+        onConfirm={confirmSelection}
+        onCancel={() => setModalVisible(false)}
+      />
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 15,
-    },
-    headerTitle: {
-        color: Colors.text,
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    titleArea: {
-        alignItems: 'center',
-        paddingVertical: 20,
-    },
-    title: {
-        color: Colors.text,
-        fontSize: 28,
-        fontWeight: 'bold',
-        letterSpacing: 2,
-    },
-    grid: {
-        paddingHorizontal: 30,
-        paddingBottom: 20,
-        maxWidth: 1400,
-        alignSelf: 'center',
-        width: '100%',
-    },
-    row: {
-        justifyContent: 'space-between',
-        marginBottom: 20,
-        gap: 10,
-    },
-    card: {
-        width: '45%',
-        aspectRatio: 0.8,
-        backgroundColor: 'transparent',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    avatarCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: Colors.cardBg,
-        padding: 5,
-        marginBottom: 10,
-        borderWidth: 2,
-        borderColor: Colors.surface,
-    },
-    avatar: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 45,
-    },
-    nameText: {
-        color: Colors.text,
-        fontSize: 10,
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        color: Colors.text,
-        fontSize: 16,
-        marginTop: 12,
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 40,
-    },
-    emptyText: {
-        color: Colors.text,
-        fontSize: 16,
-    },
+  container: { flex: 1, backgroundColor: Colors.background },
+
+  navbar: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+    backgroundColor: '#181818',
+  },
+  navInner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    maxWidth: 1400,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#242424',
+    minWidth: 70,
+  },
+  backText: {
+    color: Colors.text,
+    fontSize: 13,
+  },
+  navTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+
+  pageHeader: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 20,
+    maxWidth: 1400,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  pageTitle: {
+    color: Colors.text,
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  pageSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    marginTop: 4,
+  },
+
+  grid: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxWidth: 1400,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  row: {
+    gap: 12,
+    marginBottom: 12,
+  },
+
+  card: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  cardPressed: {
+    backgroundColor: '#242424',
+    borderColor: Colors.accent,
+  },
+  avatarWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
+    backgroundColor: Colors.cardBg,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#333',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  nameText: {
+    color: Colors.text,
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  emptyText: {
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 40,
+  },
 });

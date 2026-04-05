@@ -13,7 +13,7 @@ export default function SplashScreen({ navigation }) {
             useNativeDriver: true,
         }).start(() => {
             setTimeout(() => {
-                navigation.replace('Home');
+                navigation.replace('SelectGame');
             }, 1000);
         });
     }, [navigation, fadeAnim]);
