@@ -14,6 +14,11 @@ export const Colors = {
   incorrect: '#F44336',
   warning: '#FFC107',
   
+  // VTuber States
+  eliminated: '#FF3B30',
+  cardBg: '#D9D9D9',
+  buttonConfirm: '#64B5F6',
+  
   // Accents
   accent: '#FFD700', // Gold/Yellow for score
   

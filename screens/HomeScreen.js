@@ -1,11 +1,23 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image, Trophy, Settings, User } from 'lucide-react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity } from 'react-native';
+import { Settings, User } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
-import MenuCard from '../components/MenuCard';
+
+const PLAYERS = Array.from({ length: 12 }, (_, i) => ({ id: `PLAYER ${i + 1}`, label: `PLAYER ${i + 1}` }));
 
 export default function HomeScreen({ navigation }) {
+    const renderPlayerItem = ({ item }) => (
+        <TouchableOpacity 
+            style={styles.playerCard}
+            onPress={() => navigation.navigate('VTuberSelection', { playerId: item.id })}
+        >
+            <View style={styles.iconCircle}>
+                <User color={Colors.surface} size={24} />
+            </View>
+            <Text style={styles.playerLabel}>{item.label}</Text>
+        </TouchableOpacity>
+    );
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -16,25 +28,18 @@ export default function HomeScreen({ navigation }) {
                 <Settings color={Colors.text} size={24} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
-                <Text style={styles.welcomeText}>WELCOME TO THE QUIZ!</Text>
-                
-                <MenuCard 
-                    title="WHAT IS THIS PICTURE?" 
-                    icon={Image} 
-                    color={Colors.surface} 
-                    height={200}
-                    onPress={() => navigation.navigate('Difficulty')} 
-                />
-                
-                <MenuCard 
-                    title="SCOREBOARD" 
-                    icon={Trophy} 
-                    color={Colors.surface} 
-                    height={150}
-                    onPress={() => navigation.navigate('Result')} // Placeholder for scoreboard
-                />
-            </ScrollView>
+            <View style={styles.titleContainer}>
+                <Text style={styles.title}>SELECT PLAYER</Text>
+            </View>
+
+            <FlatList
+                data={PLAYERS}
+                renderItem={renderPlayerItem}
+                keyExtractor={item => item.id}
+                numColumns={3}
+                contentContainerStyle={styles.gridContainer}
+                columnWrapperStyle={styles.row}
+            />
         </SafeAreaView>
     );
 }
@@ -62,17 +67,51 @@ const styles = StyleSheet.create({
     profileName: {
         color: Colors.text,
         marginLeft: 10,
-        fontWeight: '600',
+        fontWeight: 'bold',
     },
-    content: {
-        padding: 20,
+    titleContainer: {
+        paddingVertical: 30,
         alignItems: 'center',
     },
-    welcomeText: {
-        fontSize: 14,
-        color: Colors.textSecondary,
-        marginBottom: 30,
+    title: {
+        color: Colors.text,
+        fontSize: 24,
         fontWeight: 'bold',
-        letterSpacing: 2,
+        letterSpacing: 1.5,
+    },
+    gridContainer: {
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+    },
+    row: {
+        justifyContent: 'space-between',
+        marginBottom: 20,
+    },
+    playerCard: {
+        backgroundColor: Colors.surface,
+        width: '30%',
+        aspectRatio: 1,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 8,
+    },
+    iconCircle: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: Colors.text,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    playerLabel: {
+        color: Colors.text,
+        fontSize: 12,
+        fontWeight: 'bold',
     },
 });
