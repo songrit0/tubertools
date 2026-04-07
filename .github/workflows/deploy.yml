@@ -18,11 +18,11 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Build web app
-        run: npx expo export --platform web
+        run: npx expo export -p web
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TUBER_TOOLS_266CB }}
           projectId: tuber-tools-266cb
           channelId: live

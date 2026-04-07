@@ -67,7 +67,7 @@ export default function SelectGameScreen({ navigation }) {
       {/* Navbar */}
       <View style={styles.navbar}>
         <View style={styles.navInner}>
-          <Text style={styles.navLogo}>12VTuber</Text>
+          <Text style={styles.navLogo}>tuber-tools</Text>
           <View style={styles.navActions}>
             <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('AdminData')}>
               <Database color={Colors.textSecondary} size={18} />

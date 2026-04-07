@@ -19,7 +19,7 @@ export default function AdminDataScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ id: '', name: '', imageUrl: '' });
+  const [formData, setFormData] = useState({ id: '', name: '', imageUrl: '', description: '', subscribers: '' });
   const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
 
   const isWide = responsive.width >= 768;
@@ -58,7 +58,7 @@ export default function AdminDataScreen({ navigation }) {
 
   const openAdd = () => {
     setEditingId(null);
-    setFormData({ id: Date.now().toString(), name: '', imageUrl: '' });
+    setFormData({ id: Date.now().toString(), name: '', imageUrl: '', description: '', subscribers: '' });
     setShowModal(true);
   };
 
@@ -76,7 +76,12 @@ export default function AdminDataScreen({ navigation }) {
     setIsLoading(true);
     try {
       const result = editingId
-        ? await updateVtuber(formData.id, { name: formData.name, imageUrl: formData.imageUrl })
+        ? await updateVtuber(formData.id, {
+          name: formData.name,
+          imageUrl: formData.imageUrl,
+          description: formData.description,
+          subscribers: formData.subscribers
+        })
         : await addVtuber(formData);
 
       if (result.success) {
@@ -106,8 +111,8 @@ export default function AdminDataScreen({ navigation }) {
 
   const numColumns = responsive.width >= 1200 ? 6
     : responsive.width >= 900 ? 5
-    : responsive.width >= 600 ? 4
-    : 3;
+      : responsive.width >= 600 ? 4
+        : 3;
 
   const renderCard = ({ item }) => (
     <View style={styles.card}>
@@ -170,13 +175,13 @@ export default function AdminDataScreen({ navigation }) {
             <Text style={styles.countText}>{vtubers.length} VTuber</Text>
           </View>
           <View style={styles.toolbarRight}>
-            <Pressable
+            {/* <Pressable
               style={({ pressed }) => [styles.toolBtn, styles.toolBtnSecondary, pressed && { opacity: 0.7 }, isLoading && styles.btnDisabled]}
               onPress={handleSync} disabled={isLoading}
             >
               <Upload size={15} color={Colors.textSecondary} />
               {isWide && <Text style={styles.toolBtnSecText}>ซิงค์ข้อมูลเริ่มต้น</Text>}
-            </Pressable>
+            </Pressable> */}
             <Pressable
               style={({ pressed }) => [styles.toolBtn, styles.toolBtnPrimary, pressed && { opacity: 0.7 }]}
               onPress={openAdd}
@@ -247,12 +252,30 @@ export default function AdminDataScreen({ navigation }) {
 
             <Text style={styles.label}>URL รูปภาพ</Text>
             <TextInput
-              style={[styles.input, styles.inputMulti]}
+              style={styles.input}
               placeholder="https://..."
               placeholderTextColor="#555"
               value={formData.imageUrl}
               onChangeText={(t) => setFormData({ ...formData, imageUrl: t })}
+            />
+
+            <Text style={styles.label}>คำอธิบาย / รายละเอียด (Description)</Text>
+            <TextInput
+              style={[styles.input, styles.inputMulti]}
+              placeholder="คำอธิบายสั้นๆ..."
+              placeholderTextColor="#555"
+              value={formData.description}
+              onChangeText={(t) => setFormData({ ...formData, description: t })}
               multiline
+            />
+
+            <Text style={styles.label}>จำนวนผู้ติดตาม (เช่น 1.2M)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="1.2M"
+              placeholderTextColor="#555"
+              value={formData.subscribers}
+              onChangeText={(t) => setFormData({ ...formData, subscribers: t })}
             />
 
             {/* Buttons */}

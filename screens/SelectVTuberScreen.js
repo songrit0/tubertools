@@ -8,6 +8,8 @@ import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
 import { fetchVtubersFromDatabase, saveUserSelection, fetchUserSelections, removeCharacterInUse, subscribeToVtubersInUse } from '../services/vtuberDatabaseService';
 
+const MainLogo = require('../assets/assetslogo.png');
+
 const shuffleArray = (arr) => {
   const shuffled = [...arr];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -174,7 +176,10 @@ export default function SelectVTuberScreen({ route, navigation }) {
             <ChevronLeft color={Colors.text} size={20} />
             <Text style={styles.backText}>หน้าหลัก</Text>
           </Pressable>
-          <Text style={styles.navTitle}>SELECT VTUBER</Text>
+          <View style={styles.navTitleContainer}>
+            <Image source={MainLogo} style={styles.navLogoImg} resizeMode="contain" />
+            <Text style={styles.navTitle}>SELECT VTUBER</Text>
+          </View>
           <View style={{ width: 70 }} />
         </View>
       </View>
@@ -224,23 +229,57 @@ export default function SelectVTuberScreen({ route, navigation }) {
 
             <Text style={styles.modalTitle}>ยืนยันการเลือก</Text>
 
-            {/* Character */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalLabel}>PLAYING AS</Text>
-              <View style={styles.modalCard}>
-                <Image source={{ uri: character?.imageUrl }} style={styles.modalAvatar} />
-                <Text style={styles.modalName}>{character?.name}</Text>
+            {/* Selection Flow Container */}
+            <View style={styles.selectionFlow}>
+              {/* My Character (Small) */}
+              <View style={styles.myCharacterMini}>
+                <Image source={{ uri: character?.imageUrl }} style={styles.miniAvatar} />
+                <View>
+                  <Text style={styles.miniLabel}>PLAYING AS</Text>
+                  <Text style={styles.miniName}>{character?.name}</Text>
+                </View>
               </View>
-            </View>
 
-            <Text style={styles.arrow}>↓</Text>
+              <View style={styles.selectionArrowContainer}>
+                <View style={styles.arrowLine} />
+                <Text style={styles.arrowIcon}>↓</Text>
+              </View>
 
-            {/* VTuber */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalLabel}>SELECTED</Text>
-              <View style={styles.modalCard}>
-                <Image source={{ uri: selectedVTuber?.imageUrl }} style={styles.modalAvatar} />
-                <Text style={styles.modalName}>{selectedVTuber?.name}</Text>
+              {/* Detailed VTuber Preview (GitHub-style Card) */}
+              <View style={styles.detailCard}>
+                <View style={styles.detailHeader}>
+                  <Image source={{ uri: selectedVTuber?.imageUrl }} style={styles.detailAvatar} />
+                  <View style={styles.detailTitleWrap}>
+                    <Text style={styles.detailCategory}>VTuber Selection</Text>
+                    <Text style={styles.detailName}>{selectedVTuber?.name}</Text>
+                  </View>
+                  <Image source={MainLogo} style={styles.detailRepoLogo} resizeMode="contain" />
+                </View>
+
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailDesc} numberOfLines={3}>
+                    {selectedVTuber?.description || `ร่วมเชียร์และเดินทางไปกับ ${selectedVTuber?.name} ในศึก 12VTuber ครั้งนี้! การเลือกครั้งนี้จะถูกบันทึกเพื่อใช้ในการแข่งขันรอบถัดไป`}
+                  </Text>
+                </View>
+
+                {/* GitHub-style Metadata Row */}
+                <View style={styles.detailMetadata}>
+                  <View style={styles.metaItem}>
+                    <View style={[styles.metaDot, { backgroundColor: Colors.accent }]} />
+                    <Text style={styles.metaText}>{selectedVTuber?.subscribers || '1.2M'} Subs</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Text style={styles.metaText}>⭐ 0</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Text style={styles.metaText}>🔱 12V</Text>
+                  </View>
+                </View>
+
+                {/* ID Badge */}
+                <View style={styles.detailFooter}>
+                  <Text style={styles.detailId}>ID: {selectedVTuber?.id}</Text>
+                </View>
               </View>
             </View>
 
@@ -298,6 +337,15 @@ const styles = StyleSheet.create({
     minWidth: 70,
   },
   backText: { color: Colors.text, fontSize: 13 },
+  navTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  navLogoImg: {
+    width: 24,
+    height: 24,
+  },
   navTitle: { color: Colors.text, fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
 
   // Playing As Banner
@@ -387,64 +435,172 @@ const styles = StyleSheet.create({
   // Modal
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modal: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 20,
-    padding: 28,
+    backgroundColor: '#0D1117',
+    borderRadius: 16,
+    padding: 24,
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 450,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#30363d',
   },
   closeBtn: {
     position: 'absolute',
     top: 16,
     right: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2A2A2A',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#21262d',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 10,
   },
   modalTitle: {
-    color: Colors.text,
-    fontSize: 20,
+    color: '#f0f6fc',
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 24,
   },
-  modalSection: { marginBottom: 8 },
-  modalLabel: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-    marginBottom: 8,
+
+  // Selection Flow
+  selectionFlow: {
+    gap: 0,
   },
-  modalCard: {
-    backgroundColor: '#141414',
-    borderRadius: 12,
-    padding: 14,
+  myCharacterMini: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    borderWidth: 1,
-    borderColor: '#333',
+    gap: 12,
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
-  modalAvatar: { width: 52, height: 52, borderRadius: 26 },
-  modalName: { color: Colors.text, fontSize: 15, fontWeight: 'bold', flex: 1 },
-  arrow: { color: Colors.textSecondary, fontSize: 22, textAlign: 'center', marginVertical: 8 },
+  miniAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: Colors.accent,
+  },
+  miniLabel: {
+    color: '#8b949e',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  miniName: {
+    color: '#f0f6fc',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  selectionArrowContainer: {
+    alignItems: 'center',
+    marginVertical: -4,
+    zIndex: 1,
+  },
+  arrowLine: {
+    width: 2,
+    height: 20,
+    backgroundColor: '#30363d',
+  },
+  arrowIcon: {
+    color: '#8b949e',
+    fontSize: 18,
+    marginTop: -8,
+  },
+
+  // Detail Card (GitHub Style)
+  detailCard: {
+    backgroundColor: '#0D1117',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#30363d',
+    padding: 16,
+    marginTop: 12,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  detailAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#161b22',
+  },
+  detailTitleWrap: {
+    flex: 1,
+  },
+  detailCategory: {
+    color: '#58a6ff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  detailName: {
+    color: '#58a6ff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  detailRepoLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    opacity: 0.8,
+  },
+  detailContent: {
+    marginBottom: 16,
+  },
+  detailDesc: {
+    color: '#8b949e',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  detailMetadata: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 12,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  metaText: {
+    color: '#8b949e',
+    fontSize: 12,
+  },
+  detailFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#30363d',
+    paddingTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  detailId: {
+    color: '#484f58',
+    fontSize: 10,
+    fontFamily: 'monospace',
+  },
+
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: 24 },
   modalBtn: {
     flex: 1,
     flexDirection: 'row',
-    paddingVertical: 13,
+    paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -452,16 +608,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   modalBtnCancel: {
-    backgroundColor: '#C0392B',
+    backgroundColor: '#21262d',
     borderWidth: 1,
-    borderColor: '#8B2E24',
+    borderColor: '#30363d',
   },
   modalBtnConfirm: {
-    backgroundColor: Colors.accent,
+    backgroundColor: '#238636', // GitHub Green
     borderWidth: 1,
-    borderColor: '#FF8C42',
+    borderColor: '#2ea043',
   },
-  modalBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  modalBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   btnCancel: {
     flex: 1,
     backgroundColor: '#2A2A2A',
