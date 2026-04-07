@@ -21,7 +21,14 @@ const GAMES = [
     screen: 'VTuberSelection',
     tag: 'LIVE',
   },
-  // เพิ่มเกมใหม่ที่นี่
+  {
+    id: 'monopoly',
+    title: 'เศรษฐี',
+    description: 'เกมเศรษฐี Monopoly Online 2-4 คน',
+    emoji: '🎲',
+    screen: 'MonopolyLobby',
+    tag: 'NEW',
+  },
 ];
 
 export default function SelectGameScreen({ navigation }) {

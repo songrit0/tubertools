@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm run:*)",
+      "Bash(node -c components/monopoly/BoardView.js)",
+      "Bash(node -c components/monopoly/PlayerPanel.js)",
+      "Bash(node -c screens/monopoly/MonopolyGameScreen.js)"
     ]
   }
 }
