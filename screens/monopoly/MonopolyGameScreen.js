@@ -159,8 +159,8 @@ export default function MonopolyGameScreen({ route, navigation }) {
     return ['topLeft', 'topRight', 'bottomLeft'][idx] || 'topLeft';
   };
 
-  const handleRoll = async () => {
-    try { setRolling(true); await new Promise(r => setTimeout(r, 800)); await rollDice(roomCode, playerId); } catch (e) { Alert.alert('Error', e.message); }
+  const handleRoll = async (power = 0) => {
+    try { setRolling(true); await new Promise(r => setTimeout(r, 800)); await rollDice(roomCode, playerId, power); } catch (e) { Alert.alert('Error', e.message); }
     setRolling(false);
   };
   const handleBuy = async (pos) => { try { await buyProperty(roomCode, playerId, pos); } catch (e) { Alert.alert('Error', e.message); } };
@@ -203,6 +203,7 @@ export default function MonopolyGameScreen({ route, navigation }) {
             {isMyTurn ? 'YOUR TURN' : `${currentTurnPlayer?.name?.toUpperCase() || '...'}'S TURN`}
           </Text>
           {isAnimating && <Text style={s.animLabel}>MOVING...</Text>}
+          {me?.doubleToken && !isAnimating && <Text style={s.doubleTokenLabel}>⚡x2</Text>}
         </View>
 
         {/* === BOARD (responsive, fits screen) === */}
@@ -241,7 +242,7 @@ export default function MonopolyGameScreen({ route, navigation }) {
           {/* === CENTER CONTROLS (inside board) === */}
           <View style={s.centerOverlay} pointerEvents="box-none">
             {/* Dice */}
-            <DiceView dice={room.dice || [0, 0]} rolling={rolling} />
+            <DiceView dice={room.dice || [0, 0]} rolling={rolling} lastRoll={room.lastRoll} />
 
             {/* Roll */}
             {isMyTurn && phase === 'roll' && !isAnimating && (
@@ -251,7 +252,7 @@ export default function MonopolyGameScreen({ route, navigation }) {
                     <Text style={s.jailBtnText}>FREE PASS</Text>
                   </TouchableOpacity>
                 )}
-                <RollButton onRoll={handleRoll} disabled={false} rolling={rolling} />
+                <RollButton onRoll={handleRoll} disabled={false} rolling={rolling} hasDoubleToken={me?.doubleToken || false} />
               </View>
             )}
 
@@ -378,6 +379,7 @@ const s = StyleSheet.create({
   turnDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
   turnText: { color: '#FFF', fontSize: 10, fontWeight: '900', letterSpacing: 2 },
   animLabel: { color: '#44FF44', fontSize: 9, marginLeft: 8, fontWeight: 'bold' },
+  doubleTokenLabel: { color: '#FF6B00', fontSize: 9, marginLeft: 8, fontWeight: '900', backgroundColor: '#FF6B0020', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
 
   // Board area — takes remaining space, centers board
   boardArea: {

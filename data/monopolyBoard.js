@@ -56,5 +56,5 @@ export const PLAYER_COLORS = ['#FF4444', '#44AAFF', '#44DD44', '#FFAA00'];
 export const PLAYER_EMOJIS = ['🔴', '🔵', '🟢', '🟡'];
 
 export const STARTING_MONEY = 5000;
-export const PASS_START_BONUS = 200;
+export const PASS_START_BONUS = 1000;
 export const BOARD_SIZE = BOARD.length;

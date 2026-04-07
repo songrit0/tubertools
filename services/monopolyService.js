@@ -141,8 +141,21 @@ export async function startGame(roomCode) {
   await update(roomRef, updates);
 }
 
-// ทอยเต๋า
-export async function rollDice(roomCode, playerId) {
+// สุ่มเต๋าตาม power gauge (0-1): ยิ่ง power สูง → ผลรวมสูง
+function rollWithPower(power) {
+  // power 0 = สุ่มปกติ, power 1 = เน้นแต้มสูง
+  // ใช้ weighted random: power สูง → bias ไปทาง 4-6
+  const rollOne = () => {
+    const r = Math.random();
+    // เลื่อน distribution ตาม power
+    const biased = r * (1 - power * 0.4) + power * 0.4;
+    return Math.min(6, Math.max(1, Math.ceil(biased * 6)));
+  };
+  return [rollOne(), rollOne()];
+}
+
+// ทอยเต๋า (รับ power จาก gauge 0-1)
+export async function rollDice(roomCode, playerId, power = 0) {
   const roomRef = ref(realtimeDb, `monopolyRooms/${roomCode}`);
   const snapshot = await get(roomRef);
   const room = snapshot.val();
@@ -151,31 +164,29 @@ export async function rollDice(roomCode, playerId) {
   if (room.turnPhase !== 'roll') throw new Error('ทอยเต๋าไปแล้ว');
 
   const player = room.players[playerId];
+  const hasDoubleToken = player.doubleToken || false;
 
   // ถ้าอยู่ในคุก
   if (player.status === 'jail') {
     if (player.jailTurns >= 3) {
-      // อยู่ครบ 3 ตา ปล่อยออก จ่าย 200
       await update(roomRef, {
         [`players/${playerId}/status`]: 'alive',
         [`players/${playerId}/jailTurns`]: 0,
         [`players/${playerId}/money`]: player.money - 200,
       });
     } else {
-      const d1 = Math.floor(Math.random() * 6) + 1;
-      const d2 = Math.floor(Math.random() * 6) + 1;
+      const [d1, d2] = rollWithPower(power);
       if (d1 === d2) {
-        // ทอยได้ดับเบิ้ล ออกจากคุก
         await update(roomRef, {
           dice: [d1, d2],
           [`players/${playerId}/status`]: 'alive',
           [`players/${playerId}/jailTurns`]: 0,
+          [`players/${playerId}/doubleToken`]: false,
           turnPhase: 'action',
           lastAction: { type: 'jail-free-double', dice: [d1, d2] },
         });
         return await movePlayer(roomCode, playerId, d1 + d2);
       } else {
-        // ยังออกไม่ได้
         await update(roomRef, {
           dice: [d1, d2],
           [`players/${playerId}/jailTurns`]: player.jailTurns + 1,
@@ -187,14 +198,40 @@ export async function rollDice(roomCode, playerId) {
     }
   }
 
-  const d1 = Math.floor(Math.random() * 6) + 1;
-  const d2 = Math.floor(Math.random() * 6) + 1;
-  const total = d1 + d2;
+  const [d1, d2] = rollWithPower(power);
+  const isDouble = d1 === d2;
+  let total = d1 + d2;
 
-  await update(roomRef, {
+  // ถ้ามี doubleToken จากตาก่อน → คูณ 2
+  if (hasDoubleToken) {
+    total = total * 2;
+  }
+
+  const updates = {
     dice: [d1, d2],
     turnPhase: 'action',
-  });
+    // เก็บข้อมูลแสดงผล
+    lastRoll: {
+      d1, d2,
+      originalTotal: d1 + d2,
+      finalTotal: total,
+      usedDoubleToken: hasDoubleToken,
+      isDouble,
+      power: Math.round(power * 100),
+    },
+  };
+
+  // ใช้ doubleToken แล้ว → ลบ
+  if (hasDoubleToken) {
+    updates[`players/${playerId}/doubleToken`] = false;
+  }
+
+  // ทอยได้ดับเบิ้ล → ได้ doubleToken สำหรับตาหน้า
+  if (isDouble) {
+    updates[`players/${playerId}/doubleToken`] = true;
+  }
+
+  await update(roomRef, updates);
 
   return await movePlayer(roomCode, playerId, total);
 }
@@ -226,9 +263,10 @@ async function movePlayer(roomCode, playerId, steps) {
     [`players/${playerId}/position`]: newPos,
   };
 
-  // ผ่านจุดเริ่มต้น = รับเงิน
-  if (passedStart && newPos !== 0) {
+  // ผ่านจุดเริ่มต้น = รับเงินเดือน ฿1000
+  if (passedStart) {
     updates[`players/${playerId}/money`] = player.money + PASS_START_BONUS;
+    updates.lastAction = { type: 'pass-start', bonus: PASS_START_BONUS, playerName: player.name };
   }
 
   await update(roomRef, updates);

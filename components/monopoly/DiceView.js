@@ -29,7 +29,7 @@ function Die({ value, animStyle }) {
   );
 }
 
-export default function DiceView({ dice, rolling }) {
+export default function DiceView({ dice, rolling, lastRoll }) {
   const scale = useRef(new Animated.Value(0)).current;
   const rotate1 = useRef(new Animated.Value(0)).current;
   const rotate2 = useRef(new Animated.Value(0)).current;
@@ -43,7 +43,6 @@ export default function DiceView({ dice, rolling }) {
   useEffect(() => {
     if (rolling) {
       scale.setValue(1);
-      // เริ่ม animation หมุน
       Animated.loop(
         Animated.parallel([
           Animated.sequence([
@@ -62,7 +61,6 @@ export default function DiceView({ dice, rolling }) {
         ])
       ).start();
 
-      // สุ่มหน้าเร็ว ๆ
       rollingRef.current = setInterval(() => {
         setDisplayDice([
           Math.floor(Math.random() * 6) + 1,
@@ -70,7 +68,6 @@ export default function DiceView({ dice, rolling }) {
         ]);
       }, 80);
     } else {
-      // หยุดหมุน
       if (rollingRef.current) {
         clearInterval(rollingRef.current);
         rollingRef.current = null;
@@ -84,7 +81,6 @@ export default function DiceView({ dice, rolling }) {
 
       if (dice[0] > 0) {
         setDisplayDice(dice);
-        // Bounce เด้งเข้า
         Animated.sequence([
           Animated.timing(bounce, { toValue: 1.3, duration: 120, easing: Easing.out(Easing.back(2)), useNativeDriver: true }),
           Animated.spring(bounce, { toValue: 1, friction: 4, tension: 200, useNativeDriver: true }),
@@ -101,7 +97,7 @@ export default function DiceView({ dice, rolling }) {
     };
   }, [rolling]);
 
-  // อัพเดตค่าสุดท้ายเมื่อ dice เปลี่ยน (จากคนอื่นทอย)
+  // อัพเดตค่าสุดท้ายเมื่อ dice เปลี่ยน
   useEffect(() => {
     if (!rolling && dice[0] > 0) {
       setDisplayDice(dice);
@@ -120,6 +116,9 @@ export default function DiceView({ dice, rolling }) {
   const shakeX = shake.interpolate({ inputRange: [-1, 0, 1], outputRange: [-6, 0, 6] });
 
   const isDouble = !rolling && displayDice[0] === displayDice[1] && displayDice[0] > 0;
+  const usedDoubleToken = lastRoll?.usedDoubleToken;
+  const finalTotal = lastRoll?.finalTotal || displayDice[0] + displayDice[1];
+  const originalTotal = lastRoll?.originalTotal || displayDice[0] + displayDice[1];
 
   return (
     <Animated.View style={[
@@ -129,18 +128,38 @@ export default function DiceView({ dice, rolling }) {
         transform: [{ scale: bounce }, { translateX: shakeX }],
       },
     ]}>
-      <Die
-        value={displayDice[0]}
-        animStyle={{ transform: [{ rotate: rot1 }] }}
-      />
-      <Die
-        value={displayDice[1]}
-        animStyle={{ transform: [{ rotate: rot2 }] }}
-      />
+      <Die value={displayDice[0]} animStyle={{ transform: [{ rotate: rot1 }] }} />
+      <Die value={displayDice[1]} animStyle={{ transform: [{ rotate: rot2 }] }} />
       <View style={styles.totalBox}>
-        <Text style={styles.total}>{displayDice[0] + displayDice[1]}</Text>
+        {/* แสดงผลรวม */}
+        {usedDoubleToken && !rolling ? (
+          <View style={styles.doubleCalc}>
+            <Text style={styles.originalTotal}>{originalTotal}</Text>
+            <Text style={styles.multiplier}>x2</Text>
+            <Text style={styles.finalTotal}>{finalTotal}</Text>
+          </View>
+        ) : (
+          <Text style={styles.total}>{rolling ? displayDice[0] + displayDice[1] : finalTotal}</Text>
+        )}
         {rolling && <Text style={styles.rollingLabel}>...</Text>}
-        {isDouble && <Text style={styles.doubleLabel}>DOUBLE!</Text>}
+
+        {/* แสดงระยะเดิน */}
+        {!rolling && displayDice[0] > 0 && (
+          <Text style={styles.distanceLabel}>🚶 {finalTotal} ช่อง</Text>
+        )}
+
+        {/* ดับเบิ้ล */}
+        {isDouble && (
+          <View style={styles.doubleBadge}>
+            <Text style={styles.doubleLabel}>DOUBLE!</Text>
+            <Text style={styles.doubleHint}>ตาหน้า x2</Text>
+          </View>
+        )}
+
+        {/* Power */}
+        {!rolling && lastRoll?.power > 0 && (
+          <Text style={styles.powerLabel}>⚡{lastRoll.power}%</Text>
+        )}
       </View>
     </Animated.View>
   );
@@ -187,21 +206,65 @@ const styles = StyleSheet.create({
   },
   totalBox: {
     alignItems: 'center',
-    minWidth: 40,
+    minWidth: 50,
   },
   total: {
     color: '#FFD700',
     fontSize: 24,
     fontWeight: 'bold',
   },
+  doubleCalc: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  originalTotal: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textDecorationLine: 'line-through',
+  },
+  multiplier: {
+    color: '#FF4444',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  finalTotal: {
+    color: '#FF6B00',
+    fontSize: 26,
+    fontWeight: '900',
+  },
   rollingLabel: {
     color: '#888',
     fontSize: 12,
   },
+  distanceLabel: {
+    color: '#44DD44',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  doubleBadge: {
+    backgroundColor: '#FF444420',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 3,
+    alignItems: 'center',
+  },
   doubleLabel: {
     color: '#FF4444',
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '900',
+  },
+  doubleHint: {
+    color: '#FF8888',
+    fontSize: 7,
+    fontWeight: '600',
+  },
+  powerLabel: {
+    color: '#888',
+    fontSize: 8,
     marginTop: 2,
   },
 });

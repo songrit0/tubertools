@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Pressable } from 'react-native';
 
-export default function RollButton({ onRoll, disabled, rolling }) {
+export default function RollButton({ onRoll, disabled, rolling, hasDoubleToken }) {
   const gaugeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -9,7 +9,7 @@ export default function RollButton({ onRoll, disabled, rolling }) {
   const [gaugeValue, setGaugeValue] = useState(0);
   const gaugeLoop = useRef(null);
 
-  // Idle pulse animation
+  // Idle pulse
   useEffect(() => {
     if (!disabled && !rolling) {
       const pulse = Animated.loop(
@@ -25,24 +25,20 @@ export default function RollButton({ onRoll, disabled, rolling }) {
     }
   }, [disabled, rolling]);
 
-  // Glow when pressing
+  // Gauge when pressing
   useEffect(() => {
     if (pressing) {
       Animated.timing(glowAnim, { toValue: 1, duration: 200, useNativeDriver: false }).start();
-      // Power gauge oscillation
       gaugeLoop.current = Animated.loop(
         Animated.sequence([
-          Animated.timing(gaugeAnim, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-          Animated.timing(gaugeAnim, { toValue: 0, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+          Animated.timing(gaugeAnim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+          Animated.timing(gaugeAnim, { toValue: 0, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
         ])
       );
       gaugeLoop.current.start();
 
-      // Track gauge value
       const listenerId = gaugeAnim.addListener(({ value }) => setGaugeValue(value));
-      return () => {
-        gaugeAnim.removeListener(listenerId);
-      };
+      return () => gaugeAnim.removeListener(listenerId);
     } else {
       Animated.timing(glowAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
       if (gaugeLoop.current) {
@@ -74,44 +70,52 @@ export default function RollButton({ onRoll, disabled, rolling }) {
 
   const handlePressOut = () => {
     if (!pressing) return;
+    const power = gaugeValue;
     setPressing(false);
-    onRoll?.();
+    onRoll?.(power);
   };
 
-  const spin = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const glowColor = glowAnim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,215,0,0)', 'rgba(255,215,0,0.3)'] });
+  const gaugeRotate = gaugeAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
-  const glowColor = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(255,215,0,0)', 'rgba(255,215,0,0.3)'],
-  });
+  // คำนวณระยะทอยโดยประมาณจาก power
+  const estimatedMin = pressing ? Math.max(2, Math.round(2 + gaugeValue * 4)) : 0;
+  const estimatedMax = pressing ? Math.min(12, Math.round(estimatedMin + 4)) : 0;
 
-  // Gauge ring
-  const gaugeRotate = gaugeAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  // สี gauge ตาม %
+  const getPowerColor = () => {
+    if (gaugeValue < 0.3) return '#44AAFF';
+    if (gaugeValue < 0.6) return '#FFD700';
+    if (gaugeValue < 0.85) return '#FF8C00';
+    return '#FF4444';
+  };
 
   return (
     <View style={styles.wrapper}>
       {/* Power gauge ring */}
       {pressing && (
-        <Animated.View style={[styles.gaugeRing, { transform: [{ rotate: gaugeRotate }] }]}>
-          <View style={styles.gaugeArc} />
+        <Animated.View style={[styles.gaugeRing, { transform: [{ rotate: gaugeRotate }], borderTopColor: getPowerColor(), borderRightColor: getPowerColor() }]}>
+          <View style={[styles.gaugeArc, { backgroundColor: getPowerColor() }]} />
         </Animated.View>
       )}
 
-      {/* Gauge level indicator */}
+      {/* Gauge level bar */}
       {pressing && (
         <View style={styles.gaugeLevel}>
-          <View style={[styles.gaugeFill, { height: `${gaugeValue * 100}%` }]} />
+          <View style={[styles.gaugeFill, { height: `${gaugeValue * 100}%`, backgroundColor: getPowerColor() }]} />
         </View>
       )}
 
       {/* Glow */}
       <Animated.View style={[styles.glow, { backgroundColor: glowColor }]} />
+
+      {/* Double token badge */}
+      {hasDoubleToken && !rolling && (
+        <View style={styles.doubleBadge}>
+          <Text style={styles.doubleBadgeText}>x2</Text>
+        </View>
+      )}
 
       {/* Button */}
       <Pressable
@@ -120,6 +124,7 @@ export default function RollButton({ onRoll, disabled, rolling }) {
         disabled={disabled || rolling}
         style={({ pressed }) => [
           styles.button,
+          hasDoubleToken && styles.buttonDouble,
           (disabled || rolling) && styles.buttonDisabled,
           pressed && !disabled && styles.buttonPressed,
         ]}
@@ -130,16 +135,19 @@ export default function RollButton({ onRoll, disabled, rolling }) {
             ...(rolling ? [{ rotate: spin }] : [{ scale: pulseAnim }]),
           ],
         }}>
-          <Text style={styles.buttonEmoji}>{rolling ? '🎲' : '🎲'}</Text>
+          <Text style={styles.buttonEmoji}>{rolling ? '🎲' : hasDoubleToken ? '⚡' : '🎲'}</Text>
           <Text style={[styles.buttonText, rolling && styles.buttonTextRolling]}>
-            {rolling ? 'ROLLING' : pressing ? 'RELEASE!' : 'ROLL'}
+            {rolling ? 'ROLLING' : pressing ? 'RELEASE!' : hasDoubleToken ? 'ROLL x2' : 'ROLL'}
           </Text>
         </Animated.View>
       </Pressable>
 
-      {/* Power text */}
+      {/* Power % + ระยะโดยประมาณ */}
       {pressing && (
-        <Text style={styles.powerText}>⚡ {Math.round(gaugeValue * 100)}%</Text>
+        <View style={styles.powerInfo}>
+          <Text style={[styles.powerText, { color: getPowerColor() }]}>⚡ {Math.round(gaugeValue * 100)}%</Text>
+          <Text style={styles.rangeText}>ระยะ ~{estimatedMin}-{estimatedMax} ช่อง</Text>
+        </View>
       )}
     </View>
   );
@@ -152,16 +160,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: BUTTON_SIZE + 40,
-    height: BUTTON_SIZE + 40,
+    height: BUTTON_SIZE + 55,
   },
   glow: {
     position: 'absolute',
     width: BUTTON_SIZE + 30,
     height: BUTTON_SIZE + 30,
     borderRadius: (BUTTON_SIZE + 30) / 2,
+    top: 0,
   },
   gaugeRing: {
     position: 'absolute',
+    top: 0,
     width: BUTTON_SIZE + 20,
     height: BUTTON_SIZE + 20,
     borderRadius: (BUTTON_SIZE + 20) / 2,
@@ -184,7 +194,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: -6,
     top: 10,
-    bottom: 10,
+    bottom: 25,
     width: 4,
     borderRadius: 2,
     backgroundColor: '#333',
@@ -195,8 +205,24 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFD700',
     borderRadius: 2,
+  },
+  doubleBadge: {
+    position: 'absolute',
+    top: -4,
+    right: 4,
+    backgroundColor: '#FF4444',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    zIndex: 10,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  doubleBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '900',
   },
   button: {
     width: BUTTON_SIZE,
@@ -212,6 +238,11 @@ const styles = StyleSheet.create({
     elevation: 8,
     borderWidth: 3,
     borderColor: '#FFF',
+  },
+  buttonDouble: {
+    backgroundColor: '#FF6B00',
+    shadowColor: '#FF6B00',
+    borderColor: '#FFD700',
   },
   buttonDisabled: {
     backgroundColor: '#444',
@@ -235,12 +266,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666',
   },
-  powerText: {
-    color: '#FFD700',
-    fontSize: 11,
-    fontWeight: 'bold',
+  powerInfo: {
+    alignItems: 'center',
     marginTop: 4,
-    position: 'absolute',
-    bottom: -6,
+  },
+  powerText: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  rangeText: {
+    color: '#888',
+    fontSize: 9,
+    fontWeight: '600',
+    marginTop: 1,
   },
 });
