@@ -8,6 +8,15 @@ import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
 import { fetchVtubersFromDatabase, saveUserSelection, fetchUserSelections, removeCharacterInUse, subscribeToVtubersInUse } from '../services/vtuberDatabaseService';
 
+const shuffleArray = (arr) => {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 let cachedVtubers = null;
 
 export default function SelectVTuberScreen({ route, navigation }) {
@@ -48,13 +57,15 @@ export default function SelectVTuberScreen({ route, navigation }) {
     });
 
     checkExistingSelection();
+    const needsShuffle = !cachedVtubers;
     Promise.all([
-      !cachedVtubers ? fetchVtubersFromDatabase() : Promise.resolve(cachedVtubers),
+      needsShuffle ? fetchVtubersFromDatabase() : Promise.resolve(cachedVtubers),
       fetchUserSelections(),
     ])
       .then(([vtubersData, selections]) => {
-        cachedVtubers = vtubersData;
-        setVtubers(vtubersData);
+        const data = needsShuffle ? shuffleArray(vtubersData) : vtubersData;
+        cachedVtubers = data;
+        setVtubers(data);
         const takenIds = new Set(
           selections
             .filter((s) => s.gameId === gameId && s.character?.id === character?.id)

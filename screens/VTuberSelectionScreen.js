@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Pressable,
   Image, ActivityIndicator, SafeAreaView,
@@ -9,6 +9,15 @@ import { useResponsive } from '../hooks/useResponsive';
 import SelectionModal from '../components/SelectionModal';
 import { subscribeToVtubers, addCharacterInUse, subscribeToVtubersInUse } from '../services/vtuberDatabaseService';
 
+const shuffleArray = (arr) => {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 export default function VTuberSelectionScreen({ route, navigation }) {
   const responsive = useResponsive();
   const { gameId } = route.params || {};
@@ -17,6 +26,7 @@ export default function VTuberSelectionScreen({ route, navigation }) {
   const [characters, setCharacters] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [vtubersInUse, setVtubersInUse] = useState([]);
+  const orderRef = useRef(null);
 
   const numColumns = responsive.width >= 1200 ? 6
     : responsive.width >= 900 ? 5
@@ -26,7 +36,16 @@ export default function VTuberSelectionScreen({ route, navigation }) {
   useEffect(() => {
     // Real-time listener for characters
     const unsubscribeCharacters = subscribeToVtubers((vtubersData) => {
-      setCharacters(vtubersData);
+      if (!orderRef.current) {
+        const shuffled = shuffleArray(vtubersData);
+        orderRef.current = shuffled.map(v => v.id);
+        setCharacters(shuffled);
+      } else {
+        const ordered = orderRef.current
+          .map(id => vtubersData.find(v => v.id === id))
+          .filter(Boolean);
+        setCharacters(ordered);
+      }
       setIsLoading(false);
     });
 
