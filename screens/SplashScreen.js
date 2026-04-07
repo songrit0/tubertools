@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+import { Gamepad2 } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
-
-const MainLogo = require('../assets/assetslogo.png');
 
 export default function SplashScreen({ navigation }) {
     const fadeAnim = new Animated.Value(0);
@@ -22,8 +21,8 @@ export default function SplashScreen({ navigation }) {
     return (
         <View style={styles.container}>
             <Animated.View style={[styles.logoContainer, { opacity: fadeAnim }]}>
-                <Image source={MainLogo} style={styles.splashLogo} resizeMode="contain" />
-                <Text style={styles.title}>12VTuber</Text>
+                <Gamepad2 size={100} color={Colors.accent} />
+                <Text style={styles.title}>VTuber Tools</Text>
             </Animated.View>
         </View>
     );
@@ -38,10 +37,6 @@ const styles = StyleSheet.create({
     },
     logoContainer: {
         alignItems: 'center',
-    },
-    splashLogo: {
-        width: 180,
-        height: 180,
     },
     title: {
         fontSize: 32,
