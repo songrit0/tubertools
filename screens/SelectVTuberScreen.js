@@ -1,34 +1,73 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Pressable, Image,
   ActivityIndicator, Alert, Modal, SafeAreaView,
 } from 'react-native';
-import { ChevronLeft, X } from 'lucide-react-native';
+import { ChevronLeft, X, Check } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
-import { fetchVtubersFromDatabase, saveUserSelection, fetchUserSelections } from '../services/vtuberDatabaseService';
+import { fetchVtubersFromDatabase, saveUserSelection, fetchUserSelections, removeCharacterInUse, subscribeToVtubersInUse } from '../services/vtuberDatabaseService';
+
+let cachedVtubers = null;
 
 export default function SelectVTuberScreen({ route, navigation }) {
   const responsive = useResponsive();
   const { gameId, character } = route.params || {};
   const [selectedVTuber, setSelectedVTuber] = useState(null);
-  const [vtubers, setVtubers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [vtubers, setVtubers] = useState(cachedVtubers || []);
+  const [isLoading, setIsLoading] = useState(!cachedVtubers);
   const [isSaving, setIsSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [selectedVTuberIds, setSelectedVTuberIds] = useState(new Set());
+  const [vtubersInUse, setVtubersInUse] = useState([]);
 
   const numColumns = responsive.width >= 1200 ? 6
     : responsive.width >= 900 ? 5
-    : responsive.width >= 600 ? 4
-    : 3;
+      : responsive.width >= 600 ? 4
+        : 3;
 
   useEffect(() => {
+    // Check if vtubersInUse collection is empty and if character is locked
+    const unsubscribe = subscribeToVtubersInUse((inUseIds) => {
+      setVtubersInUse(inUseIds);
+      console.log('👁️ VTubersInUse:', inUseIds);
+
+      // If vtubersInUse is empty/null, redirect to SelectGame
+      if (!inUseIds || inUseIds.length === 0) {
+        console.log('⚠️ vtubersInUse is empty, redirecting to SelectGame');
+        navigation.navigate('SelectGame');
+        return;
+      }
+
+      // If character is not in vtubersInUse, redirect to SelectGame
+      if (character?.id && !inUseIds.includes(character.id)) {
+        console.log('❌ Character not found in vtubersInUse:', character.id, 'redirecting to SelectGame');
+        navigation.navigate('SelectGame');
+        return;
+      }
+    });
+
     checkExistingSelection();
-    fetchVtubersFromDatabase()
-      .then(setVtubers)
+    Promise.all([
+      !cachedVtubers ? fetchVtubersFromDatabase() : Promise.resolve(cachedVtubers),
+      fetchUserSelections(),
+    ])
+      .then(([vtubersData, selections]) => {
+        cachedVtubers = vtubersData;
+        setVtubers(vtubersData);
+        const takenIds = new Set(
+          selections
+            .filter((s) => s.gameId === gameId && s.character?.id === character?.id)
+            .map((s) => s.selectedVTuber?.id)
+            .filter(Boolean)
+        );
+        setSelectedVTuberIds(takenIds);
+      })
       .catch(() => setVtubers([]))
       .finally(() => setIsLoading(false));
-  }, []);
+
+    return () => unsubscribe();
+  }, [navigation]);
 
   const checkExistingSelection = async () => {
     try {
@@ -50,6 +89,7 @@ export default function SelectVTuberScreen({ route, navigation }) {
   };
 
   const handleSelectVTuber = (vtuber) => {
+    if (selectedVTuberIds.has(vtuber.id)) return;
     setSelectedVTuber(vtuber);
     setShowModal(true);
   };
@@ -64,6 +104,7 @@ export default function SelectVTuberScreen({ route, navigation }) {
         selectedVTuber: { id: selectedVTuber.id, name: selectedVTuber.name, imageUrl: selectedVTuber.imageUrl },
       });
       if (result.success) {
+        setSelectedVTuberIds(prev => new Set([...prev, selectedVTuber.id]));
         setShowModal(false);
         navigation.navigate('ResultSelection', { gameId, character, selectedVTuber, selectionId: result.selectionId });
       } else {
@@ -76,26 +117,51 @@ export default function SelectVTuberScreen({ route, navigation }) {
     }
   };
 
-  const renderVTuber = ({ item }) => (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      onPress={() => handleSelectVTuber(item)}
-    >
-      <View style={styles.avatarWrapper}>
-        <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
-      </View>
-      <Text style={styles.nameText} numberOfLines={1}>{item.name}</Text>
-    </Pressable>
-  );
+  const renderVTuber = ({ item }) => {
+    const isAlreadySelected = selectedVTuberIds.has(item.id);
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.card,
+          isAlreadySelected && styles.cardDisabled,
+          !isAlreadySelected && pressed && styles.cardPressed,
+        ]}
+        onPress={() => handleSelectVTuber(item)}
+        disabled={isAlreadySelected}
+      >
+        <View style={[styles.avatarWrapper, isAlreadySelected && styles.avatarDisabled]}>
+          <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
+        </View>
+        <Text style={[styles.nameText, isAlreadySelected && styles.nameDisabled]} numberOfLines={1}>
+          {item.name}
+        </Text>
+        {isAlreadySelected && (
+          <View style={styles.selectedBadge}>
+            <Text style={styles.selectedBadgeText}>เลือกแล้ว</Text>
+          </View>
+        )}
+      </Pressable>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Navbar */}
       <View style={styles.navbar}>
         <View style={styles.navInner}>
-          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Pressable
+            style={styles.backBtn}
+            onPress={async () => {
+              // Remove character from vtubersInUse and navigate back
+              if (character?.id) {
+                console.log('🗑️ Removing character from vtubersInUse:', character.id);
+                await removeCharacterInUse(character.id);
+              }
+              navigation.navigate('SelectGame');
+            }}
+          >
             <ChevronLeft color={Colors.text} size={20} />
-            <Text style={styles.backText}>กลับ</Text>
+            <Text style={styles.backText}>หน้าหลัก</Text>
           </Pressable>
           <Text style={styles.navTitle}>SELECT VTUBER</Text>
           <View style={{ width: 70 }} />
@@ -169,18 +235,20 @@ export default function SelectVTuberScreen({ route, navigation }) {
 
             <View style={styles.modalBtns}>
               <Pressable
-                style={[styles.btnCancel, isSaving && styles.btnDisabled]}
+                style={({ pressed }) => [styles.modalBtn, styles.modalBtnCancel, pressed && { opacity: 0.7 }, isSaving && styles.btnDisabled]}
                 onPress={() => setShowModal(false)}
                 disabled={isSaving}
               >
-                <Text style={styles.btnText}>ยกเลิก</Text>
+                <X color="#fff" size={18} />
+                <Text style={styles.modalBtnText}>ยกเลิก</Text>
               </Pressable>
               <Pressable
-                style={[styles.btnConfirm, isSaving && styles.btnDisabled]}
+                style={({ pressed }) => [styles.modalBtn, styles.modalBtnConfirm, pressed && { opacity: 0.8 }, isSaving && styles.btnDisabled]}
                 onPress={handleConfirm}
                 disabled={isSaving}
               >
-                <Text style={styles.btnText}>{isSaving ? 'กำลังบันทึก...' : 'ยืนยัน'}</Text>
+                <Check color="#fff" size={18} />
+                <Text style={styles.modalBtnText}>{isSaving ? 'กำลังบันทึก...' : 'ยืนยัน'}</Text>
               </Pressable>
             </View>
           </View>
@@ -362,6 +430,27 @@ const styles = StyleSheet.create({
   modalName: { color: Colors.text, fontSize: 15, fontWeight: 'bold', flex: 1 },
   arrow: { color: Colors.textSecondary, fontSize: 22, textAlign: 'center', marginVertical: 8 },
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: 24 },
+  modalBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  modalBtnCancel: {
+    backgroundColor: '#C0392B',
+    borderWidth: 1,
+    borderColor: '#8B2E24',
+  },
+  modalBtnConfirm: {
+    backgroundColor: Colors.accent,
+    borderWidth: 1,
+    borderColor: '#FF8C42',
+  },
+  modalBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   btnCancel: {
     flex: 1,
     backgroundColor: '#2A2A2A',
@@ -378,4 +467,27 @@ const styles = StyleSheet.create({
   },
   btnText: { color: Colors.background, fontSize: 14, fontWeight: 'bold' },
   btnDisabled: { opacity: 0.5 },
+
+  cardDisabled: {
+    opacity: 0.5,
+    borderColor: '#333',
+  },
+  avatarDisabled: {
+    borderColor: '#555',
+  },
+  nameDisabled: {
+    color: Colors.textSecondary,
+  },
+  selectedBadge: {
+    marginTop: 6,
+    backgroundColor: '#FF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  selectedBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
 });

@@ -146,6 +146,74 @@ export const subscribeToVtuberSelections = (callback) => {
   return () => off(dbRef, 'value', listener);
 };
 
+// VTuber In Use Functions (ติดตามตัวละครที่กำลังใช้งาน)
+const VTUBER_IN_USE_PATH = 'vtubersInUse';
+
+export const addCharacterInUse = async (characterId) => {
+  try {
+    console.log('🔒 Adding character in use:', characterId);
+    const dbRef = ref(realtimeDb, `${VTUBER_IN_USE_PATH}/${characterId}`);
+    await set(dbRef, {
+      characterId,
+      timestamp: new Date().toISOString(),
+    });
+    console.log('✅ Character added to vtubersInUse:', characterId);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Error adding character in use:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const removeCharacterInUse = async (characterId) => {
+  try {
+    const dbRef = ref(realtimeDb, `${VTUBER_IN_USE_PATH}/${characterId}`);
+    await remove(dbRef);
+    return { success: true };
+  } catch (error) {
+    console.error('Error removing character in use:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const subscribeToVtubersInUse = (callback) => {
+  const dbRef = ref(realtimeDb, VTUBER_IN_USE_PATH);
+  const listener = onValue(dbRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      const inUseIds = Object.keys(data);
+      console.log('👁️ Characters in use:', inUseIds);
+      callback(inUseIds);
+    } else {
+      console.log('👁️ No characters in use');
+      callback([]);
+    }
+  }, (error) => {
+    console.error('❌ Error subscribing to vtubers in use:', error);
+  });
+
+  return () => off(dbRef, 'value', listener);
+};
+
+export const deleteAllVtubersInUse = async () => {
+  try {
+    console.log('🧹 Deleting all vtubersInUse...');
+    const dbRef = ref(realtimeDb, VTUBER_IN_USE_PATH);
+    const snapshot = await get(dbRef);
+    if (snapshot.exists()) {
+      await remove(dbRef);
+      console.log('✅ All vtubersInUse deleted');
+      return { success: true };
+    } else {
+      console.log('ℹ️ No vtubersInUse to delete');
+      return { success: true };
+    }
+  } catch (error) {
+    console.error('❌ Error deleting all vtubersInUse:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // User Selection Functions (ใครเลือกใคร)
 const USER_SELECTIONS_PATH = 'userSelections';
 

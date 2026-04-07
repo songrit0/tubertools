@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Pressable,
   Image, ActivityIndicator, SafeAreaView,
@@ -7,7 +7,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
 import SelectionModal from '../components/SelectionModal';
-import { fetchVtubersFromDatabase } from '../services/vtuberDatabaseService';
+import { subscribeToVtubers, addCharacterInUse, subscribeToVtubersInUse } from '../services/vtuberDatabaseService';
 
 export default function VTuberSelectionScreen({ route, navigation }) {
   const responsive = useResponsive();
@@ -16,6 +16,7 @@ export default function VTuberSelectionScreen({ route, navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [characters, setCharacters] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [vtubersInUse, setVtubersInUse] = useState([]);
 
   const numColumns = responsive.width >= 1200 ? 6
     : responsive.width >= 900 ? 5
@@ -23,33 +24,73 @@ export default function VTuberSelectionScreen({ route, navigation }) {
     : 3;
 
   useEffect(() => {
-    fetchVtubersFromDatabase()
-      .then(setCharacters)
-      .catch(() => setCharacters([]))
-      .finally(() => setIsLoading(false));
+    // Real-time listener for characters
+    const unsubscribeCharacters = subscribeToVtubers((vtubersData) => {
+      setCharacters(vtubersData);
+      setIsLoading(false);
+    });
+
+    // Real-time listener for characters in use
+    const unsubscribeInUse = subscribeToVtubersInUse((inUseIds) => {
+      setVtubersInUse(inUseIds);
+      console.log('👁️ Characters in use:', inUseIds);
+    });
+
+    return () => {
+      unsubscribeCharacters();
+      unsubscribeInUse();
+    };
   }, []);
 
   const handleSelect = (character) => {
+    console.log('📍 handleSelect:', character.name, '| In use:', vtubersInUse);
+    if (vtubersInUse.includes(character.id)) {
+      console.log('❌ Character already in use:', character.name);
+      return;
+    }
     setSelectedCharacter(character);
     setModalVisible(true);
   };
 
   const confirmSelection = () => {
+    if (selectedCharacter?.id) {
+      console.log('✅ Confirming character:', selectedCharacter.id);
+      addCharacterInUse(selectedCharacter.id);
+    }
     setModalVisible(false);
     navigation.navigate('SelectVTuber', { gameId, character: selectedCharacter });
   };
 
-  const renderCharacter = ({ item }) => (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      onPress={() => handleSelect(item)}
-    >
-      <View style={styles.avatarWrapper}>
-        <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
-      </View>
-      <Text style={styles.nameText} numberOfLines={1}>{item.name}</Text>
-    </Pressable>
-  );
+  const handleCancel = () => {
+    setModalVisible(false);
+  };
+
+  const renderCharacter = ({ item }) => {
+    const isInUse = vtubersInUse.includes(item.id);
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.card,
+          isInUse && styles.cardDisabled,
+          !isInUse && pressed && styles.cardPressed,
+        ]}
+        onPress={() => handleSelect(item)}
+        disabled={isInUse}
+      >
+        <View style={[styles.avatarWrapper, isInUse && styles.avatarDisabled]}>
+          <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
+        </View>
+        <Text style={[styles.nameText, isInUse && styles.nameDisabled]} numberOfLines={1}>
+          {item.name}
+        </Text>
+        {isInUse && (
+          <View style={styles.selectedBadge}>
+            <Text style={styles.selectedBadgeText}>เลือกแล้ว</Text>
+          </View>
+        )}
+      </Pressable>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,7 +136,7 @@ export default function VTuberSelectionScreen({ route, navigation }) {
         visible={modalVisible}
         vtuber={selectedCharacter}
         onConfirm={confirmSelection}
-        onCancel={() => setModalVisible(false)}
+        onCancel={handleCancel}
       />
     </SafeAreaView>
   );
@@ -220,5 +261,28 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: 40,
+  },
+
+  cardDisabled: {
+    opacity: 0.5,
+    borderColor: '#333',
+  },
+  avatarDisabled: {
+    borderColor: '#555',
+  },
+  nameDisabled: {
+    color: Colors.textSecondary,
+  },
+  selectedBadge: {
+    marginTop: 6,
+    backgroundColor: '#FF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  selectedBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
 });

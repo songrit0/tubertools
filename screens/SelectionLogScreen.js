@@ -3,16 +3,20 @@ import {
   View, Text, StyleSheet, FlatList, Pressable,
   ActivityIndicator, SafeAreaView, Image, ScrollView,
 } from 'react-native';
-import { ChevronLeft, Trash2, RefreshCw } from 'lucide-react-native';
+import { ChevronLeft, Trash2, RefreshCw, X } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
-import { fetchUserSelections, deleteAllUserSelections, subscribeToUserSelections } from '../services/vtuberDatabaseService';
+import { vtuberData } from '../data/vtuberData';
+import { fetchUserSelections, deleteAllUserSelections, subscribeToUserSelections, subscribeToVtubersInUse, removeCharacterInUse, subscribeToVtubers } from '../services/vtuberDatabaseService';
 
 export default function SelectionLogScreen({ navigation }) {
   const responsive = useResponsive();
   const [selections, setSelections] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
+  const [vtubersInUse, setVtubersInUse] = useState([]);
+  const [isRemovingAll, setIsRemovingAll] = useState(false);
+  const [vtubers, setVtubers] = useState([]);
 
   const isWide = responsive.width >= 768;
 
@@ -31,12 +35,22 @@ export default function SelectionLogScreen({ navigation }) {
   }, [selections]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToUserSelections((data) => {
+    const unsubscribeSelections = subscribeToUserSelections((data) => {
       setSelections(data);
       setIsLoading(false);
     });
+    const unsubscribeInUse = subscribeToVtubersInUse((data) => {
+      setVtubersInUse(data);
+    });
+    const unsubscribeVtubers = subscribeToVtubers((data) => {
+      setVtubers(data);
+    });
     loadSelections();
-    return () => unsubscribe();
+    return () => {
+      unsubscribeSelections();
+      unsubscribeInUse();
+      unsubscribeVtubers();
+    };
   }, []);
 
   const loadSelections = async () => {
@@ -70,6 +84,35 @@ export default function SelectionLogScreen({ navigation }) {
       window.alert(`Error: ${e.message}`);
     } finally {
       setIsClearing(false);
+    }
+  };
+
+  const handleRemoveCharacter = async (characterId) => {
+    console.log('🗑️ Removing character from vtubersInUse:', characterId);
+    try {
+      await removeCharacterInUse(characterId);
+    } catch (e) {
+      window.alert(`Error: ${e.message}`);
+    }
+  };
+
+  const handleRemoveAllInUse = async () => {
+    if (vtubersInUse.length === 0) {
+      window.alert('ไม่มีตัวละครที่ถูกล็อกอยู่');
+      return;
+    }
+    const confirmed = window.confirm(
+      `ลบการล็อกตัวละครทั้งหมด ${vtubersInUse.length} ตัว?`
+    );
+    if (!confirmed) return;
+    setIsRemovingAll(true);
+    try {
+      await Promise.all(vtubersInUse.map(id => removeCharacterInUse(id)));
+      window.alert('ลบการล็อกสำเร็จ ✓');
+    } catch (e) {
+      window.alert(`Error: ${e.message}`);
+    } finally {
+      setIsRemovingAll(false);
     }
   };
 
@@ -136,6 +179,55 @@ export default function SelectionLogScreen({ navigation }) {
           ))}
         </ScrollView>
       )}
+
+      {/* VTubers In Use Section */}
+      <View style={{ marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#2A2A2A' }}>
+        <Text style={styles.panelTitle}>VTuber ที่ถูกlogin</Text>
+        <Text style={styles.panelSubtitle}>{vtubersInUse.length} ตัวละคร</Text>
+
+        {vtubersInUse.length === 0 ? (
+          <Text style={styles.emptySubtitle}>ไม่มีตัวละครที่ถูกlogin</Text>
+        ) : (
+          <View style={{ marginTop: 8, gap: 6 }}>
+            {vtubersInUse.map((charId) => {
+              const character = vtubers.find(c => c.id === charId) || vtuberData.find(c => c.id === charId);
+              return (
+                <View key={charId} style={styles.lockedCharRow}>
+                  {character?.imageUrl && (
+                    <Image
+                      source={{ uri: character.imageUrl }}
+                      style={styles.lockedCharAvatar}
+                    />
+                  )}
+                  <Text style={styles.lockedCharName} numberOfLines={1}>
+                    {character?.name || charId}
+                  </Text>
+                  <Pressable
+                    style={({ pressed }) => [styles.removeBtn, pressed && { opacity: 0.6 }]}
+                    onPress={() => handleRemoveCharacter(charId)}
+                  >
+                    <X size={14} color="#fff" />
+                  </Pressable>
+                </View>
+              );
+            })}
+            <Pressable
+              style={({ pressed }) => [
+                styles.removeAllBtn,
+                isRemovingAll && { opacity: 0.5 },
+                pressed && { opacity: 0.7 }
+              ]}
+              onPress={handleRemoveAllInUse}
+              disabled={isRemovingAll}
+            >
+              <Trash2 size={14} color="#fff" />
+              <Text style={styles.removeAllBtnText}>
+                {isRemovingAll ? 'กำลังลบ...' : 'ลบทั้งหมด'}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
     </View>
   );
 
@@ -410,6 +502,54 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
     textAlign: 'right',
+  },
+
+  // Locked characters
+  lockedCharRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 6,
+    borderLeftWidth: 2,
+    borderLeftColor: '#FF6B6B',
+  },
+  lockedCharName: {
+    flex: 1,
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  removeBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    backgroundColor: '#C0392B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    backgroundColor: '#C0392B',
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  removeAllBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  lockedCharAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.cardBg,
   },
 
   // Log table
