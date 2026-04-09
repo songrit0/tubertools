@@ -246,22 +246,22 @@ export default function SelectVTuberScreen({ route, navigation }) {
               </View>
 
               {/* Detailed VTuber Preview (GitHub-style Card) */}
-              <View style={styles.detailCard}>
-                <View style={styles.detailHeader}>
-                  <Image source={{ uri: selectedVTuber?.imageUrl }} style={styles.detailAvatar} />
-                  <View style={styles.detailTitleWrap}>
-                    <Text style={styles.detailCategory}>VTuber Selection</Text>
-                    <Text style={styles.detailName}>{selectedVTuber?.name}</Text>
-                  </View>
-                  <Image source={MainLogo} style={styles.detailRepoLogo} resizeMode="contain" />
+              {/* <View style={styles.detailCard}> */}
+              <View style={styles.detailHeader}>
+                <Image source={{ uri: selectedVTuber?.imageUrl }} style={styles.detailAvatar} />
+                <View style={styles.detailTitleWrap}>
+                  <Text style={styles.detailCategory}>VTuber Selection</Text>
+                  <Text style={styles.detailName}>{selectedVTuber?.name}</Text>
                 </View>
-
-
-                {/* ID Badge */}
-                <View style={styles.detailFooter}>
-                  <Text style={styles.detailId}>ID: {selectedVTuber?.id}</Text>
-                </View>
+                {/* <Image source={MainLogo} style={styles.detailRepoLogo} resizeMode="contain" /> */}
               </View>
+
+
+              {/* ID Badge */}
+              {/* <View style={styles.detailFooter}>
+                  <Text style={styles.detailId}>ID: {selectedVTuber?.id}</Text>
+                </View> */}
+              {/* </View> */}
             </View>
 
             <View style={styles.modalBtns}>
