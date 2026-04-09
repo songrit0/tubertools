@@ -247,15 +247,13 @@ export default function SelectVTuberScreen({ route, navigation }) {
 
               {/* Detailed VTuber Preview (GitHub-style Card) */}
               {/* <View style={styles.detailCard}> */}
-              <View style={styles.detailHeader}>
-                <Image source={{ uri: selectedVTuber?.imageUrl }} style={styles.detailAvatar} />
-                <View style={styles.detailTitleWrap}>
-                  <Text style={styles.detailCategory}>VTuber Selection</Text>
-                  <Text style={styles.detailName}>{selectedVTuber?.name}</Text>
+              <View style={styles.myCharacterMini}>
+                <Image source={{ uri: selectedVTuber?.imageUrl }} style={styles.miniAvatar} />
+                <View>
+                  <Text style={styles.miniLabel}>VTuber Selection</Text>
+                  <Text style={styles.miniName}>{selectedVTuber?.name}</Text>
                 </View>
-                {/* <Image source={MainLogo} style={styles.detailRepoLogo} resizeMode="contain" /> */}
               </View>
-
 
               {/* ID Badge */}
               {/* <View style={styles.detailFooter}>
@@ -270,7 +268,6 @@ export default function SelectVTuberScreen({ route, navigation }) {
                 onPress={() => setShowModal(false)}
                 disabled={isSaving}
               >
-                <X color="#fff" size={18} />
                 <Text style={styles.modalBtnText}>ยกเลิก</Text>
               </Pressable>
               <Pressable
@@ -278,8 +275,7 @@ export default function SelectVTuberScreen({ route, navigation }) {
                 onPress={handleConfirm}
                 disabled={isSaving}
               >
-                <Check color="#fff" size={18} />
-                <Text style={styles.modalBtnText}>{isSaving ? 'กำลังบันทึก...' : 'ยืนยัน'}</Text>
+                <Text style={styles.buttonTextconfirm}>{isSaving ? 'กำลังบันทึก...' : 'ยืนยัน'}</Text>
               </Pressable>
             </View>
           </View>
@@ -571,6 +567,11 @@ const styles = StyleSheet.create({
     borderColor: '#2ea043',
   },
   modalBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  buttonTextconfirm: {
+    color: '#000',
+    fontWeight: '600',
+    fontSize: 14,
+  },
   btnCancel: {
     flex: 1,
     backgroundColor: '#2A2A2A',

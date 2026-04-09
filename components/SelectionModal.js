@@ -33,7 +33,6 @@ export default function SelectionModal({ visible, vtuber, onConfirm, onCancel })
                             style={({ pressed }) => [styles.button, styles.cancelButton, pressed && { opacity: 0.7 }]}
                             onPress={onCancel}
                         >
-                            <X color="#fff" size={18} />
                             <Text style={styles.buttonText}>ยกเลิก</Text>
                         </Pressable>
 
@@ -41,8 +40,7 @@ export default function SelectionModal({ visible, vtuber, onConfirm, onCancel })
                             style={({ pressed }) => [styles.button, styles.confirmButton, pressed && { opacity: 0.8 }]}
                             onPress={onConfirm}
                         >
-                            <Check color="#fff" size={18} />
-                            <Text style={styles.buttonText}>ยืนยัน</Text>
+                            <Text style={styles.buttonTextconfirm}>ยืนยัน</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -144,6 +142,11 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         color: '#fff',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    buttonTextconfirm: {
+        color: '#000',
         fontWeight: '600',
         fontSize: 14,
     },

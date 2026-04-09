@@ -80,7 +80,7 @@ export default function ResultSelectionScreen({ route, navigation }) {
         {/* Info */}
         <View style={styles.infoBox}>
           <View style={styles.liveDot} />
-          <Text style={styles.infoText}>รอผลการแข่งขัน — หน้านี้จะอัปเดตอัตโนมัติ</Text>
+          <Text style={styles.infoText}>ระบบได้บันทึกการเลือกของคุณแล้ว ขอบคุณที่ร่วมสนุก</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
