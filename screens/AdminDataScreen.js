@@ -19,7 +19,7 @@ export default function AdminDataScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ id: '', name: '', imageUrl: '', description: '', subscribers: '' });
+  const [formData, setFormData] = useState({ id: '', name: '', imageUrl: '' });
   const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
 
   const isWide = responsive.width >= 768;
@@ -58,7 +58,7 @@ export default function AdminDataScreen({ navigation }) {
 
   const openAdd = () => {
     setEditingId(null);
-    setFormData({ id: Date.now().toString(), name: '', imageUrl: '', description: '', subscribers: '' });
+    setFormData({ id: Date.now().toString(), name: '', imageUrl: '' });
     setShowModal(true);
   };
 
@@ -78,9 +78,7 @@ export default function AdminDataScreen({ navigation }) {
       const result = editingId
         ? await updateVtuber(formData.id, {
           name: formData.name,
-          imageUrl: formData.imageUrl,
-          description: formData.description,
-          subscribers: formData.subscribers
+          imageUrl: formData.imageUrl
         })
         : await addVtuber(formData);
 
@@ -259,24 +257,6 @@ export default function AdminDataScreen({ navigation }) {
               onChangeText={(t) => setFormData({ ...formData, imageUrl: t })}
             />
 
-            <Text style={styles.label}>คำอธิบาย / รายละเอียด (Description)</Text>
-            <TextInput
-              style={[styles.input, styles.inputMulti]}
-              placeholder="คำอธิบายสั้นๆ..."
-              placeholderTextColor="#555"
-              value={formData.description}
-              onChangeText={(t) => setFormData({ ...formData, description: t })}
-              multiline
-            />
-
-            <Text style={styles.label}>จำนวนผู้ติดตาม (เช่น 1.2M)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="1.2M"
-              placeholderTextColor="#555"
-              value={formData.subscribers}
-              onChangeText={(t) => setFormData({ ...formData, subscribers: t })}
-            />
 
             {/* Buttons */}
             <View style={styles.modalBtns}>

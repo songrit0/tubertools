@@ -256,25 +256,6 @@ export default function SelectVTuberScreen({ route, navigation }) {
                   <Image source={MainLogo} style={styles.detailRepoLogo} resizeMode="contain" />
                 </View>
 
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailDesc} numberOfLines={3}>
-                    {selectedVTuber?.description || `ร่วมเชียร์และเดินทางไปกับ ${selectedVTuber?.name} ในศึก 12VTuber ครั้งนี้! การเลือกครั้งนี้จะถูกบันทึกเพื่อใช้ในการแข่งขันรอบถัดไป`}
-                  </Text>
-                </View>
-
-                {/* GitHub-style Metadata Row */}
-                <View style={styles.detailMetadata}>
-                  <View style={styles.metaItem}>
-                    <View style={[styles.metaDot, { backgroundColor: Colors.accent }]} />
-                    <Text style={styles.metaText}>{selectedVTuber?.subscribers || '1.2M'} Subs</Text>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Text style={styles.metaText}>⭐ 0</Text>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Text style={styles.metaText}>🔱 12V</Text>
-                  </View>
-                </View>
 
                 {/* ID Badge */}
                 <View style={styles.detailFooter}>
@@ -554,34 +535,6 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 8,
     opacity: 0.8,
-  },
-  detailContent: {
-    marginBottom: 16,
-  },
-  detailDesc: {
-    color: '#8b949e',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  detailMetadata: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 12,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  metaText: {
-    color: '#8b949e',
-    fontSize: 12,
   },
   detailFooter: {
     borderTopWidth: 1,
