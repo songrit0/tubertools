@@ -3,11 +3,12 @@ import {
   View, Text, StyleSheet, FlatList, Pressable,
   ActivityIndicator, SafeAreaView, Image, ScrollView,
 } from 'react-native';
-import { ChevronLeft, Trash2, RefreshCw, X } from 'lucide-react-native';
+import { ChevronLeft, Trash2, RefreshCw, X, Eye, Monitor } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
 import { vtuberData } from '../data/vtuberData';
-import { fetchUserSelections, deleteAllUserSelections, subscribeToUserSelections, subscribeToVtubersInUse, removeCharacterInUse, subscribeToVtubers } from '../services/vtuberDatabaseService';
+import { fetchUserSelections, deleteAllUserSelections, subscribeToUserSelections, subscribeToVtubersInUse, removeCharacterInUse, subscribeToVtubers, setActivePreview } from '../services/vtuberDatabaseService';
+
 
 export default function SelectionLogScreen({ navigation }) {
   const responsive = useResponsive();
@@ -17,6 +18,7 @@ export default function SelectionLogScreen({ navigation }) {
   const [vtubersInUse, setVtubersInUse] = useState([]);
   const [isRemovingAll, setIsRemovingAll] = useState(false);
   const [vtubers, setVtubers] = useState([]);
+
 
   const isWide = responsive.width >= 768;
 
@@ -113,6 +115,15 @@ export default function SelectionLogScreen({ navigation }) {
       window.alert(`Error: ${e.message}`);
     } finally {
       setIsRemovingAll(false);
+    }
+  };
+
+  const handleShowPreview = async (item) => {
+    // Sync to remote Lowerthird only
+    try {
+      await setActivePreview(item);
+    } catch (e) {
+      console.error('Failed to sync preview to remote:', e);
     }
   };
 
@@ -276,6 +287,13 @@ export default function SelectionLogScreen({ navigation }) {
               </View>
 
               <Text style={styles.timeText}>{formatTime(item.timestamp)}</Text>
+
+              <Pressable 
+                style={({ pressed }) => [styles.previewBtn, pressed && { opacity: 0.6 }]}
+                onPress={() => handleShowPreview(item)}
+              >
+                <Eye size={16} color={Colors.accent} />
+              </Pressable>
             </View>
           )}
         />
@@ -307,6 +325,13 @@ export default function SelectionLogScreen({ navigation }) {
             disabled={isLoading}
           >
             <RefreshCw color={Colors.textSecondary} size={18} />
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.refreshBtn, { marginLeft: 10 }, pressed && { opacity: 0.6 }]}
+            onPress={() => navigation.navigate('SelectionLowerThird')}
+          >
+            <Monitor color={Colors.accent} size={18} />
           </Pressable>
         </View>
       </View>
@@ -646,4 +671,13 @@ const styles = StyleSheet.create({
   },
   endRoundText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
   btnDisabled: { opacity: 0.5 },
+  previewBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: '#2A2A2A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
 });

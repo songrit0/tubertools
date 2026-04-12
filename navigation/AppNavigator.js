@@ -9,6 +9,7 @@ import ResultSelectionScreen from '../screens/ResultSelectionScreen';
 import GameBoardScreen from '../screens/GameBoardScreen';
 import AdminDataScreen from '../screens/AdminDataScreen';
 import SelectionLogScreen from '../screens/SelectionLogScreen';
+import SelectionLowerThirdScreen from '../screens/SelectionLowerThirdScreen';
 import MonopolyLobbyScreen from '../screens/monopoly/MonopolyLobbyScreen';
 import MonopolyGameScreen from '../screens/monopoly/MonopolyGameScreen';
 import MonopolyResultScreen from '../screens/monopoly/MonopolyResultScreen';
@@ -33,6 +34,7 @@ export default function AppNavigator() {
       <Stack.Screen name="GameBoard" component={GameBoardScreen} />
       <Stack.Screen name="AdminData" component={AdminDataScreen} />
       <Stack.Screen name="SelectionLog" component={SelectionLogScreen} />
+      <Stack.Screen name="SelectionLowerThird" component={SelectionLowerThirdScreen} />
       <Stack.Screen name="MonopolyLobby" component={MonopolyLobbyScreen} />
       <Stack.Screen name="MonopolyGame" component={MonopolyGameScreen} />
       <Stack.Screen name="MonopolyResult" component={MonopolyResultScreen} />

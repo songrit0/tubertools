@@ -301,3 +301,47 @@ export const deleteAllUserSelections = async () => {
     return { success: false, error: error.message };
   }
 };
+
+// Active Preview Functions (สำหรับคุมหน้าจอ Lowerthird)
+const ACTIVE_PREVIEW_PATH = 'activePreview';
+
+export const setActivePreview = async (selectionData) => {
+  try {
+    const dbRef = ref(realtimeDb, ACTIVE_PREVIEW_PATH);
+    await set(dbRef, {
+      ...selectionData,
+      status: 'active',
+      triggerTime: new Date().toISOString()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting active preview:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const clearActivePreview = async () => {
+  try {
+    const dbRef = ref(realtimeDb, ACTIVE_PREVIEW_PATH);
+    await remove(dbRef);
+    return { success: true };
+  } catch (error) {
+    console.error('Error clearing active preview:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const subscribeToActivePreview = (callback) => {
+  const dbRef = ref(realtimeDb, ACTIVE_PREVIEW_PATH);
+  const listener = onValue(dbRef, (snapshot) => {
+    if (snapshot.exists()) {
+      callback(snapshot.val());
+    } else {
+      callback(null);
+    }
+  }, (error) => {
+    console.error('Error subscribing to active preview:', error);
+  });
+
+  return () => off(dbRef, 'value', listener);
+};
