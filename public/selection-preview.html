@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Selection Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay.visible {
+      opacity: 1;
+    }
+
+    .overlay.visible .container {
+      transform: scale(1);
+    }
+
+    .container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      transform: scale(0.9);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .avatar-wrapper {
+      width: 280px;
+      height: 280px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .avatar-glow {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      opacity: 0.6;
+      filter: blur(20px);
+    }
+
+    .avatar-glow.selector {
+      background: rgba(255, 0, 168, 0.25);
+    }
+
+    .avatar-glow.selected {
+      background: rgba(0, 209, 255, 0.25);
+    }
+
+    .avatar-border {
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      border: 8px solid #fff;
+      background: #222;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      position: relative;
+      z-index: 1;
+    }
+
+    .avatar-border img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .middle-section {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+    }
+
+    .status-text {
+      font-size: 72px;
+      font-weight: 900;
+      color: #fff;
+      font-style: italic;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;
+      user-select: none;
+    }
+
+    /* Waiting state */
+    .waiting {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .waiting.hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="waiting" id="waiting">Waiting for selection...</div>
+
+  <div class="overlay" id="preview">
+    <div class="container">
+      <!-- Selector Avatar -->
+      <div class="avatar-wrapper">
+        <div class="avatar-glow selector"></div>
+        <div class="avatar-border">
+          <img id="selectorImg" src="" alt="Selector">
+        </div>
+      </div>
+
+      <!-- Middle Text -->
+      <div class="middle-section">
+        <span class="status-text">ได้เลือก</span>
+      </div>
+
+      <!-- Selected Avatar -->
+      <div class="avatar-wrapper">
+        <div class="avatar-glow selected"></div>
+        <div class="avatar-border">
+          <img id="selectedImg" src="" alt="Selected">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC95K5rmqsZbmPmSDvgGeWgqbQvOll4X60",
+      authDomain: "tuber-tools-266cb.firebaseapp.com",
+      databaseURL: "https://tuber-tools-266cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tuber-tools-266cb",
+      storageBucket: "tuber-tools-266cb.firebasestorage.app",
+      messagingSenderId: "519614170930",
+      appId: "1:519614170930:web:243813c3bcba9df196b92b",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const previewEl = document.getElementById('preview');
+    const waitingEl = document.getElementById('waiting');
+    const selectorImg = document.getElementById('selectorImg');
+    const selectedImg = document.getElementById('selectedImg');
+
+    db.ref('activePreview').on('value', (snapshot) => {
+      const data = snapshot.val();
+
+      if (data && data.status === 'active') {
+        const character = data.character;
+        const selected = data.selectedVTuber;
+
+        selectorImg.src = character?.imageUrl || '';
+        selectedImg.src = selected?.imageUrl || '';
+
+        waitingEl.classList.add('hidden');
+        previewEl.classList.add('visible');
+      } else {
+        previewEl.classList.remove('visible');
+        waitingEl.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
