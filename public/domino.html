@@ -1950,7 +1950,7 @@
       const row = Math.floor(i / cols), col = i % cols;
       return {
         x: bp.x - (cols - 1) * (DOMINO_H + GAP) / 2 + col * (DOMINO_H + GAP),
-        y: bp.y - BOARD_SIZE / 2 + BOARD_PAD + DOMINO_W / 2 + 30 + row * (DOMINO_W + GAP + 10),
+        y: bp.y - BOARD_H_DEFAULT / 2 + BOARD_PAD + DOMINO_W / 2 + 30 + row * (DOMINO_W + GAP + 10),
       };
     }
 
@@ -2021,7 +2021,7 @@
             const row = Math.floor(i / cols);
             const col = i % cols;
             wx = pos.x - (cols - 1) * (DOMINO_H + GAP) / 2 + col * (DOMINO_H + GAP);
-            wy = pos.y - BOARD_SIZE / 2 + BOARD_PAD + DOMINO_W / 2 + 30 + row * (DOMINO_W + GAP + 10);
+            wy = pos.y - BOARD_H_DEFAULT / 2 + BOARD_PAD + DOMINO_W / 2 + 30 + row * (DOMINO_W + GAP + 10);
           }
           drawFaceDownDomino(wx, wy, 1, 0);
         });
