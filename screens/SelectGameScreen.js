@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   FlatList,
   Pressable,
+  Linking,
+  Platform,
 } from 'react-native';
 import { Settings, Database } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
@@ -31,6 +33,15 @@ const GAMES = [
     tag: 'NEW',
     isUse: false,
   },
+  {
+    id: 'domino',
+    title: 'โดมิโน่',
+    description: 'เกมโดมิโน่ออนไลน์ แบบบอร์ดเกม',
+    emoji: '🁣',
+    tag: 'NEW',
+    isUse: true,
+    isExternal: true,
+  },
 ];
 
 export default function SelectGameScreen({ navigation }) {
@@ -45,7 +56,21 @@ export default function SelectGameScreen({ navigation }) {
         !item.isUse && styles.gameCardDisabled,
         item.isUse && pressed && styles.gameCardPressed,
       ]}
-      onPress={() => item.isUse && navigation.navigate(item.screen, { gameId: item.id })}
+      onPress={() => {
+        if (!item.isUse) return;
+        if (item.isExternal) {
+          const baseUrl = Platform.OS === 'web'
+            ? `${window.location.origin}/${item.id}.html`
+            : `https://tuber-tools-266cb.web.app/${item.id}.html`;
+          if (Platform.OS === 'web') {
+            window.open(baseUrl, '_blank');
+          } else {
+            Linking.openURL(baseUrl);
+          }
+        } else {
+          navigation.navigate(item.screen, { gameId: item.id });
+        }
+      }}
       disabled={!item.isUse}
     >
       <View style={styles.gameCardLeft}>

@@ -8,6 +8,10 @@
         "destination": "/selection-preview.html"
       },
       {
+        "source": "/domino",
+        "destination": "/domino.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

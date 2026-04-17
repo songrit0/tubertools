@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Domino - VTuber Tools</title>
+  <meta name="description" content="เกมโดมิโน่ออนไลน์แบบเรียลไทม์">
+  <meta property="og:title" content="Domino - VTuber Tools">
+  <meta property="og:description" content="เกมโดมิโน่ออนไลน์แบบเรียลไทม์">
+  <meta property="og:image" content="https://tuber-tools-266cb.web.app/assets/assetslogo.png">
+  <link rel="icon" href="/assets/assetslogo.png">
+  <style>
+    @font-face {
+      font-family: '9LP-BOLD';
+      src: url('/fonts/9LP-BOLD.OTF') format('opentype');
+      font-weight: bold;
+      font-display: swap;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #1a1a2e;
+      overflow: hidden;
+      font-family: '9LP-BOLD', 'Segoe UI', sans-serif;
+      color: #fff;
+      user-select: none;
+    }
+
+    canvas {
+      display: block;
+      cursor: grab;
+    }
+
+    canvas.dragging {
+      cursor: grabbing;
+    }
+
+    /* ===== Join Screen ===== */
+    #join-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .join-box {
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      min-width: 380px;
+    }
+
+    .join-box h1 {
+      font-size: 48px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #e94560, #0f3460);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .join-box p {
+      color: #888;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .join-box input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #0f3460;
+      border-radius: 8px;
+      background: #1a1a2e;
+      color: #fff;
+      font-size: 16px;
+      font-family: inherit;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .join-box input:focus {
+      border-color: #e94560;
+    }
+
+    .join-box button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #e94560, #c23152);
+      color: #fff;
+      font-size: 18px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+
+    .join-box button:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 20px rgba(233, 69, 96, 0.4);
+    }
+
+    .color-picker {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .color-opt {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+
+    .color-opt:hover {
+      transform: scale(1.15);
+    }
+
+    .color-opt.selected {
+      border-color: #fff;
+      transform: scale(1.25);
+    }
+
+    /* ===== HUD ===== */
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      background: rgba(16, 24, 48, 0.92);
+      border: 1px solid #1e3a6e;
+      border-radius: 12px;
+      padding: 16px 20px;
+      font-size: 14px;
+      line-height: 1.7;
+      min-width: 220px;
+      backdrop-filter: blur(8px);
+    }
+
+    #hud .room-id {
+      color: #e94560;
+      font-size: 18px;
+      font-weight: bold;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #hud .room-id span {
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    #hud .room-id span:hover {
+      color: #ff7a93;
+    }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #aaa;
+      font-size: 11px;
+      font-family: inherit;
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover {
+      border-color: #e94560;
+      color: #fff;
+    }
+
+    .copy-btn.copied {
+      border-color: #06d6a0;
+      color: #06d6a0;
+    }
+
+    #hud .game-info {
+      color: #aaa;
+      font-size: 12px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 8px;
+    }
+
+    #hud .players-list {
+      margin-top: 4px;
+    }
+
+    #hud .player-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    #hud .player-item.is-turn {
+      background: rgba(233, 69, 96, 0.15);
+    }
+
+    #hud .player-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #hud .player-name {
+      flex: 1;
+    }
+
+    #hud .player-hand-count {
+      color: #888;
+      font-size: 11px;
+    }
+
+    #hud .turn-star {
+      color: #ffd700;
+      font-size: 16px;
+    }
+
+    /* ===== Hand Panel ===== */
+    #hand-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(16, 24, 48, 0.98), rgba(16, 24, 48, 0.92));
+      border-top: 2px solid #1e3a6e;
+      padding: 16px 24px 20px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 10px;
+      min-height: 140px;
+      overflow-x: auto;
+    }
+
+    .hand-domino {
+      flex-shrink: 0;
+      width: 64px;
+      height: 120px;
+      background: linear-gradient(145deg, #fff, #e8e0d0);
+      border-radius: 8px;
+      border: 2px solid #555;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      position: relative;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .hand-domino:hover {
+      transform: translateY(-12px) scale(1.05);
+      box-shadow: 0 12px 24px rgba(233, 69, 96, 0.3);
+      border-color: #e94560;
+      z-index: 2;
+    }
+
+    .hand-domino.selected-hand {
+      transform: translateY(-18px) scale(1.08);
+      box-shadow: 0 14px 28px rgba(233, 69, 96, 0.5);
+      border-color: #e94560;
+      z-index: 3;
+    }
+
+    .hand-domino.cant-place {
+      opacity: 0.45;
+    }
+
+    .hand-domino .half {
+      width: 100%;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .hand-domino .divider {
+      width: 80%;
+      height: 2px;
+      background: #666;
+    }
+
+    /* Dots in hand */
+    .dot-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      width: 40px;
+      height: 40px;
+      padding: 4px;
+    }
+
+    .dot-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #1a1a2e;
+    }
+
+    /* ===== Action Buttons ===== */
+    #actions {
+      position: fixed;
+      bottom: 156px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+    }
+
+    .action-btn {
+      padding: 10px 24px;
+      border: 2px solid #1e3a6e;
+      border-radius: 10px;
+      background: rgba(16, 24, 48, 0.92);
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(8px);
+      white-space: nowrap;
+    }
+
+    .action-btn:hover {
+      border-color: #e94560;
+      background: rgba(233, 69, 96, 0.15);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .action-btn.primary {
+      background: linear-gradient(135deg, #e94560, #c23152);
+      border-color: #e94560;
+    }
+
+    .action-btn.primary:hover {
+      box-shadow: 0 4px 16px rgba(233, 69, 96, 0.4);
+    }
+
+    .action-btn.primary:disabled {
+      opacity: 0.3;
+      box-shadow: none;
+    }
+
+    /* ===== Zoom Controls ===== */
+    #zoom-controls {
+      position: fixed;
+      bottom: 160px;
+      left: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(16, 24, 48, 0.9);
+      border: 1px solid #1e3a6e;
+      border-radius: 10px;
+      padding: 6px;
+    }
+
+    .zoom-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .zoom-btn:hover {
+      background: rgba(233, 69, 96, 0.2);
+    }
+
+    #zoom-level {
+      text-align: center;
+      font-size: 11px;
+      color: #888;
+      padding: 2px 0;
+    }
+
+    /* ===== Turn Banner ===== */
+    #turn-banner {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: linear-gradient(135deg, #e94560, #c23152);
+      padding: 20px 48px;
+      border-radius: 14px;
+      font-size: 32px;
+      font-weight: bold;
+      z-index: 50;
+      opacity: 0;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+      pointer-events: none;
+      box-shadow: 0 8px 32px rgba(233, 69, 96, 0.4);
+    }
+
+    #turn-banner.show {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: rgba(16, 24, 48, 0.95);
+      border: 1px solid #1e3a6e;
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-size: 15px;
+      z-index: 60;
+      transition: transform 0.3s ease;
+      backdrop-filter: blur(8px);
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Room list */
+    .room-list {
+      margin-top: 16px;
+      max-height: 180px;
+      overflow-y: auto;
+      text-align: left;
+    }
+
+    .room-list-title {
+      color: #888;
+      font-size: 12px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .room-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      background: rgba(15, 52, 96, 0.3);
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .room-item:hover {
+      background: rgba(233, 69, 96, 0.15);
+      border-color: #e94560;
+    }
+
+    .room-item .room-name {
+      color: #e94560;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .room-item .room-info {
+      color: #888;
+      font-size: 12px;
+    }
+
+    .room-item .room-join-btn {
+      padding: 4px 12px;
+      background: #0f3460;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .room-item .room-join-btn:hover {
+      background: #e94560;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Join Screen -->
+  <div id="join-screen">
+    <div class="join-box">
+      <h1>DOMINO</h1>
+      <p>เกมโดมิโน่ออนไลน์แบบเรียลไทม์</p>
+      <input type="text" id="input-name" placeholder="ชื่อของคุณ" maxlength="12">
+      <input type="text" id="input-room" placeholder="รหัสห้อง (เว้นว่าง = สร้างห้องใหม่)" maxlength="8">
+      <div class="color-picker" id="color-picker"></div>
+      <button id="btn-join">เข้าเกม</button>
+      <div class="room-list" id="room-list">
+        <div class="room-list-title">กำลังโหลดห้อง...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="room-id">ห้อง: <span id="hud-room" title="คลิกเพื่อคัดลอก"></span><button class="copy-btn"
+        id="btn-copy">คัดลอก</button></div>
+    <div class="players-list" id="hud-players"></div>
+    <div class="game-info" id="hud-info"></div>
+  </div>
+
+  <!-- Hand Panel -->
+  <div id="hand-panel" class="hidden"></div>
+
+  <!-- Actions -->
+  <div id="actions" class="hidden">
+    <button class="action-btn primary" id="btn-start">เริ่มเกม</button>
+    <button class="action-btn" id="btn-draw">จั่ว</button>
+    <button class="action-btn" id="btn-pass">ผ่าน</button>
+  </div>
+
+  <!-- Zoom Controls -->
+  <div id="zoom-controls" class="hidden">
+    <button class="zoom-btn" id="btn-zoom-in">+</button>
+    <div id="zoom-level">100%</div>
+    <button class="zoom-btn" id="btn-zoom-out">-</button>
+    <button class="zoom-btn" id="btn-zoom-reset" style="font-size:11px">R</button>
+  </div>
+
+  <!-- Turn Banner -->
+  <div id="turn-banner"></div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <script>
+    // ========== Firebase Init ==========
+    firebase.initializeApp({
+      apiKey: "AIzaSyC95K5rmqsZbmPmSDvgGeWgqbQvOll4X60",
+      authDomain: "tuber-tools-266cb.firebaseapp.com",
+      databaseURL: "https://tuber-tools-266cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tuber-tools-266cb",
+    });
+    const db = firebase.database();
+
+    // ========== Constants ==========
+    const COLORS = ['#e94560', '#00b4d8', '#06d6a0', '#ffd60a', '#ff6b6b', '#a855f7', '#fb923c', '#2dd4bf'];
+    const DOMINO_W = 50;
+    const DOMINO_H = 100;
+    const DOT_PATTERNS = {
+      0: [],
+      1: [[0.5, 0.5]],
+      2: [[0.25, 0.25], [0.75, 0.75]],
+      3: [[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]],
+      4: [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]],
+      5: [[0.25, 0.25], [0.75, 0.25], [0.5, 0.5], [0.25, 0.75], [0.75, 0.75]],
+      6: [[0.25, 0.25], [0.75, 0.25], [0.25, 0.5], [0.75, 0.5], [0.25, 0.75], [0.75, 0.75]],
+    };
+
+    // Dot positions in 3x3 grid for hand dominos (cell indices 0-8, left-to-right top-to-bottom)
+    const HAND_DOT_CELLS = {
+      0: [],
+      1: [4],
+      2: [2, 6],
+      3: [2, 4, 6],
+      4: [0, 2, 6, 8],
+      5: [0, 2, 4, 6, 8],
+      6: [0, 2, 3, 5, 6, 8],
+    };
+
+    const MAX_DOMINO_VALUE = 6;
+    const GAP = 10;
+    const TURN_CW = { right: 'down', down: 'left', left: 'up', up: 'right' };
+    const TURN_CCW = { right: 'up', up: 'left', left: 'down', down: 'right' };
+
+    // Board layout (world coordinates)
+    const BOARD_W_DEFAULT = 850;
+    const BOARD_H_DEFAULT = 400;
+
+    const BOARD_PAD = 30;
+    const MY_BOARD_Y = 550;
+    const DRAW_PILE_POS = { x: 0, y: -300 };
+    const PILE_COLS = 7;
+
+    // ========== State ==========
+    let playerId = null;
+    let roomId = null;
+    let playerName = '';
+    let playerColor = COLORS[0];
+
+    const camera = { x: 0, y: 0, zoom: 1, angle: 0 };
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+    let camStart = { x: 0, y: 0 };
+
+    let players = {};
+    let allHands = {}; // all players hand counts
+    let allHandsData = {}; // all players hand data with positions
+    let boardDominos = {};
+    let myHand = [];
+    let gameState = { status: 'waiting', turn: null, drawPile: 0 };
+    let cursors = {};
+
+    let selectedHandIndex = -1;
+    let chainEnds = { left: null, right: null };
+
+    // Drag & free positioning
+    let dragging = null; // { type:'hand'|'pile'|'board'|'resize', ... }
+    let handLocalPos = {}; // {handKey: {x, y}}
+    let drawPileData = {};
+    // Draggable board positions + sizes
+    let boardPositions = {}; // {id: {x,y}}
+    let boardSizes = {};     // {id: size} — per-board size override
+    let handKeysCache = [];
+
+    // ========== Canvas ==========
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // ========== Color Picker ==========
+    const colorPickerEl = document.getElementById('color-picker');
+    COLORS.forEach((c, i) => {
+      const el = document.createElement('div');
+      el.className = 'color-opt' + (i === 0 ? ' selected' : '');
+      el.style.background = c;
+      el.onclick = () => {
+        document.querySelectorAll('.color-opt').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        playerColor = c;
+      };
+      colorPickerEl.appendChild(el);
+    });
+
+    // ========== Utility ==========
+    function generateId() { return Math.random().toString(36).substr(2, 8); }
+
+    function copyRoomId() {
+      const id = roomId;
+      navigator.clipboard.writeText(id).then(() => {
+        const btn = document.getElementById('btn-copy');
+        btn.textContent = 'คัดลอกแล้ว!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'คัดลอก'; btn.classList.remove('copied'); }, 1500);
+      }).catch(() => {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = id; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('คัดลอกรหัสห้องแล้ว!');
+      });
+    }
+
+    function showToast(msg, duration = 2500) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), duration);
+    }
+
+    function showTurnBanner(text) {
+      const b = document.getElementById('turn-banner');
+      b.textContent = text;
+      b.classList.add('show');
+      setTimeout(() => b.classList.remove('show'), 2000);
+    }
+
+    // ========== World <-> Screen ==========
+    function worldToScreen(wx, wy) {
+      return {
+        x: (wx - camera.x) * camera.zoom + canvas.width / 2,
+        y: (wy - camera.y) * camera.zoom + canvas.height / 2,
+      };
+    }
+
+    function screenToWorld(sx, sy) {
+      const dx = (sx - canvas.width / 2) / camera.zoom;
+      const dy = (sy - canvas.height / 2) / camera.zoom;
+      const cos = Math.cos(-camera.angle);
+      const sin = Math.sin(-camera.angle);
+      return {
+        x: dx * cos - dy * sin + camera.x,
+        y: dx * sin + dy * cos + camera.y,
+      };
+    }
+
+    // ========== Room List ==========
+    function loadRoomList() {
+      db.ref('dominoRooms').on('value', snap => {
+        const rooms = snap.val() || {};
+        const listEl = document.getElementById('room-list');
+        const roomEntries = Object.entries(rooms).filter(([id, room]) => room.players);
+
+        if (roomEntries.length === 0) {
+          listEl.innerHTML = '<div class="room-list-title">ยังไม่มีห้อง — สร้างห้องใหม่ได้เลย</div>';
+          return;
+        }
+
+        let html = '<div class="room-list-title">ห้องที่เปิดอยู่</div>';
+        roomEntries.forEach(([id, room]) => {
+          const playerList = room.players ? Object.values(room.players) : [];
+          const names = playerList.map(p => p.name).join(', ');
+          const count = playerList.length;
+          const status = room.game?.status === 'playing' ? 'กำลังเล่น' : 'รอผู้เล่น';
+          html += `<div class="room-item" onclick="document.getElementById('input-room').value='${id}'">
+            <div>
+              <div class="room-name">${id}</div>
+              <div class="room-info">${names} (${count} คน) — ${status}</div>
+            </div>
+            <button class="room-join-btn" onclick="event.stopPropagation(); document.getElementById('input-room').value='${id}'; joinGame();">เข้าร่วม</button>
+          </div>`;
+        });
+        listEl.innerHTML = html;
+      });
+    }
+    loadRoomList();
+
+    // ========== Join ==========
+    document.getElementById('btn-join').onclick = joinGame;
+    document.getElementById('input-name').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
+    document.getElementById('input-room').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
+
+    function joinGame() {
+      playerName = document.getElementById('input-name').value.trim() || 'Player';
+      roomId = document.getElementById('input-room').value.trim() || generateId();
+      playerId = generateId();
+      // Stop listening to room list
+      db.ref('dominoRooms').off();
+
+      document.getElementById('join-screen').classList.add('hidden');
+      document.getElementById('hud').classList.remove('hidden');
+      document.getElementById('hand-panel').classList.add('hidden');
+      document.getElementById('actions').classList.add('hidden');
+      document.getElementById('zoom-controls').classList.remove('hidden');
+      document.getElementById('hud-room').textContent = roomId;
+      document.getElementById('btn-copy').onclick = copyRoomId;
+      document.getElementById('hud-room').onclick = copyRoomId;
+
+      const playerRef = db.ref(`dominoRooms/${roomId}/players/${playerId}`);
+      playerRef.set({ name: playerName, color: playerColor, online: true });
+      playerRef.onDisconnect().remove();
+
+      const cursorRef = db.ref(`dominoRooms/${roomId}/cursors/${playerId}`);
+      cursorRef.onDisconnect().remove();
+
+      subscribeToRoom();
+      startRenderLoop();
+      setupInputHandlers();
+      // Auto-rotate camera so own board is at bottom
+      setTimeout(autoRotateCamera, 500);
+    }
+
+    // ========== Firebase Subscribe ==========
+    function subscribeToRoom() {
+      db.ref(`dominoRooms/${roomId}/players`).on('value', snap => {
+        players = snap.val() || {};
+        // ลบห้องถ้าไม่มีคนเหลือ
+        if (Object.keys(players).length === 0) {
+          db.ref(`dominoRooms/${roomId}`).remove();
+        }
+        updateHud();
+      });
+
+      db.ref(`dominoRooms/${roomId}/board`).on('value', snap => {
+        boardDominos = snap.val() || {};
+      });
+
+      db.ref(`dominoRooms/${roomId}/drawPile`).on('value', snap => {
+        drawPileData = snap.val() || {};
+      });
+
+      db.ref(`dominoRooms/${roomId}/boardLayout`).on('value', snap => {
+        boardPositions = snap.val() || {};
+      });
+
+      db.ref(`dominoRooms/${roomId}/boardSizes`).on('value', snap => {
+        boardSizes = snap.val() || {};
+      });
+
+      db.ref(`dominoRooms/${roomId}/chainEnds`).on('value', snap => {
+        chainEnds = snap.val() || { left: null, right: null };
+      });
+
+      db.ref(`dominoRooms/${roomId}/hands/${playerId}`).on('value', snap => {
+        const data = snap.val() || {};
+        const newKeys = Object.keys(data);
+        myHand = Object.values(data);
+        // Read rx, ry from hand data (same object, like pile)
+        newKeys.forEach((key, i) => {
+          const d = data[key];
+          if (d.rx != null) {
+            handLocalPos[key] = { rx: d.rx, ry: d.ry };
+          } else if (!handLocalPos[key]) {
+            // Default grid position for new dominos
+            const cols = Math.max(Math.ceil(Math.sqrt(newKeys.length)), 3);
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            handLocalPos[key] = {
+              rx: -(cols - 1) * (DOMINO_H + GAP) / 2 + col * (DOMINO_H + GAP),
+              ry: -BOARD_SIZE / 2 + BOARD_PAD + DOMINO_W / 2 + 30 + row * (DOMINO_W + GAP + 10),
+            };
+          }
+        });
+        // Remove old keys
+        Object.keys(handLocalPos).forEach(k => {
+          if (!newKeys.includes(k)) delete handLocalPos[k];
+        });
+        handKeysCache = newKeys;
+        renderHand();
+      });
+
+      // Listen to all hands for count + positions
+      db.ref(`dominoRooms/${roomId}/hands`).on('value', snap => {
+        const data = snap.val() || {};
+        allHands = {};
+        allHandsData = {}; // Store full hand data for rendering other players
+        for (const [pid, hand] of Object.entries(data)) {
+          allHands[pid] = Object.keys(hand).length;
+          allHandsData[pid] = hand; // {key: {a, b, rx, ry}, ...}
+        }
+        updateHud();
+      });
+
+      db.ref(`dominoRooms/${roomId}/game`).on('value', snap => {
+        const prev = gameState.turn;
+        const prevStatus = gameState.status;
+        gameState = snap.val() || { status: 'waiting', turn: null, drawPile: 0 };
+        updateActionButtons();
+        updateHud();
+        // Re-center camera when game starts
+        if (gameState.status === 'playing' && prevStatus !== 'playing') {
+          autoRotateCamera();
+        }
+
+        if (gameState.turn && gameState.turn !== prev) {
+          if (gameState.turn === playerId) {
+            showTurnBanner('ตาของคุณ!');
+          } else {
+            const p = players[gameState.turn];
+            showTurnBanner(`ตาของ ${p?.name || '...'}`);
+          }
+        }
+        if (gameState.status === 'finished') {
+          showTurnBanner(gameState.winner ? `${players[gameState.winner]?.name} ชนะ!` : 'เกมจบแล้ว!');
+        }
+      });
+
+      db.ref(`dominoRooms/${roomId}/cursors`).on('value', snap => {
+        cursors = snap.val() || {};
+      });
+    }
+
+    // ========== HUD ==========
+    function updateHud() {
+      const el = document.getElementById('hud-players');
+      let html = '';
+      for (const [pid, p] of Object.entries(players)) {
+        const isTurn = gameState.turn === pid;
+        const handCount = allHands[pid] || 0;
+        html += `<div class="player-item ${isTurn ? 'is-turn' : ''}">
+          <div class="player-dot" style="background:${p.color}"></div>
+          <span class="player-name">${p.name}${pid === playerId ? ' (คุณ)' : ''}</span>
+          ${gameState.status === 'playing' ? `<span class="player-hand-count">${handCount} ใบ</span>` : ''}
+          ${isTurn ? '<span class="turn-star">&#9733;</span>' : ''}
+        </div>`;
+      }
+      el.innerHTML = html;
+
+      // Game info
+      const infoEl = document.getElementById('hud-info');
+      if (gameState.status === 'playing') {
+        const boardCount = Object.keys(boardDominos).length;
+        infoEl.innerHTML = `กองจั่ว: ${gameState.drawPile || 0} ใบ &nbsp; บนบอร์ด: ${boardCount} ใบ`;
+      } else if (gameState.status === 'finished') {
+        infoEl.innerHTML = 'เกมจบแล้ว';
+      } else {
+        infoEl.innerHTML = `ผู้เล่น ${Object.keys(players).length} คน - รอเริ่มเกม`;
+      }
+    }
+
+    // ========== Hand Render with Dots ==========
+    function createDotGrid(value) {
+      const grid = document.createElement('div');
+      grid.className = 'dot-grid';
+      const activeCells = HAND_DOT_CELLS[value] || [];
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'dot-cell';
+        if (activeCells.includes(i)) {
+          const dot = document.createElement('div');
+          dot.className = 'dot';
+          cell.appendChild(dot);
+        }
+        grid.appendChild(cell);
+      }
+      return grid;
+    }
+
+    function renderHand() {
+      const panel = document.getElementById('hand-panel');
+      panel.innerHTML = '';
+
+      myHand.forEach((d, i) => {
+        const el = document.createElement('div');
+        const placeable = canPlace(d);
+        el.className = 'hand-domino'
+          + (i === selectedHandIndex ? ' selected-hand' : '')
+          + (!placeable && gameState.status === 'playing' ? ' cant-place' : '');
+
+        const topHalf = document.createElement('div');
+        topHalf.className = 'half';
+        topHalf.appendChild(createDotGrid(d.a));
+
+        const divider = document.createElement('div');
+        divider.className = 'divider';
+
+        const bottomHalf = document.createElement('div');
+        bottomHalf.className = 'half';
+        bottomHalf.appendChild(createDotGrid(d.b));
+
+        el.appendChild(topHalf);
+        el.appendChild(divider);
+        el.appendChild(bottomHalf);
+
+        el.onclick = () => {
+          if (gameState.turn !== playerId && gameState.status === 'playing') {
+            showToast('ยังไม่ถึงตาของคุณ');
+            return;
+          }
+          selectedHandIndex = (selectedHandIndex === i) ? -1 : i;
+          renderHand();
+        };
+        panel.appendChild(el);
+      });
+    }
+
+    // ========== Action Buttons ==========
+    function updateActionButtons() {
+      const isMyTurn = gameState.turn === playerId;
+      const isPlaying = gameState.status === 'playing';
+      const isWaiting = gameState.status === 'waiting';
+      const playerCount = Object.keys(players).length;
+
+      document.getElementById('btn-draw').disabled = !(isPlaying && isMyTurn && gameState.drawPile > 0);
+      document.getElementById('btn-pass').disabled = !(isPlaying && isMyTurn);
+      document.getElementById('btn-start').disabled = !(isWaiting && playerCount >= 2);
+
+      document.getElementById('btn-start').classList.toggle('hidden', !isWaiting);
+      document.getElementById('btn-draw').classList.toggle('hidden', isWaiting);
+      document.getElementById('btn-pass').classList.toggle('hidden', isWaiting);
+    }
+
+    document.getElementById('btn-start').onclick = startGame;
+    document.getElementById('btn-draw').onclick = drawDomino;
+    document.getElementById('btn-pass').onclick = passTurn;
+
+    // ========== Game Logic ==========
+    function generateFullSet() {
+      const set = [];
+      for (let a = 0; a <= MAX_DOMINO_VALUE; a++) {
+        for (let b = a; b <= MAX_DOMINO_VALUE; b++) {
+          set.push({ a, b });
+        }
+      }
+      for (let i = set.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [set[i], set[j]] = [set[j], set[i]];
+      }
+      return set;
+    }
+
+    async function startGame() {
+      const pids = Object.keys(players);
+      if (pids.length < 2) { showToast('ต้องมีผู้เล่นอย่างน้อย 2 คน'); return; }
+
+      const allDominos = generateFullSet();
+      const updates = {};
+
+      // ALL dominos go to the draw pile — players pick manually
+      const drawPile = {};
+      const pileCols = PILE_COLS;
+      const totalRows = Math.ceil(allDominos.length / pileCols);
+      allDominos.forEach((d, i) => {
+        const col = i % pileCols;
+        const row = Math.floor(i / pileCols);
+        drawPile[`d${i}`] = {
+          ...d,
+          rx: -(pileCols - 1) * (DOMINO_H + GAP) / 2 + col * (DOMINO_H + GAP),
+          ry: -(totalRows - 1) * (DOMINO_W + GAP + 10) / 2 + row * (DOMINO_W + GAP + 10),
+        };
+      });
+
+      // Clear hands — players draw from pile
+      pids.forEach(pid => { updates[`hands/${pid}`] = null; });
+      handLocalPos = {};
+
+      updates['drawPile'] = drawPile;
+      updates['board'] = null;
+      updates['chainEnds'] = null;
+      const drawLimit = pids.length <= 2 ? 7 : (pids.length <= 4 ? 5 : 4);
+      updates['game'] = {
+        status: 'playing',
+        turn: pids[0],
+        turnOrder: pids,
+        drawPile: allDominos.length,
+        drawLimit: drawLimit, // max dominos each player can draw at start
+      };
+
+      await db.ref(`dominoRooms/${roomId}`).update(updates);
+      showToast('เกมเริ่ม! หยิบ domino จากกองจั่ว');
+    }
+
+    async function drawDomino() {
+      const snap = await db.ref(`dominoRooms/${roomId}/drawPile`).once('value');
+      const pile = snap.val();
+      if (!pile) { showToast('ไม่มีโดมิโน่ให้จั่วแล้ว'); return; }
+
+      const keys = Object.keys(pile);
+      const key = keys[Math.floor(Math.random() * keys.length)];
+      const domino = pile[key];
+      const newKey = `d${Date.now()}`;
+
+      const updates = {};
+      updates[`drawPile/${key}`] = null;
+      updates[`hands/${playerId}/${newKey}`] = domino;
+      updates['game/drawPile'] = keys.length - 1;
+
+      await db.ref(`dominoRooms/${roomId}`).update(updates);
+      showToast(`จั่วได้ [${domino.a}|${domino.b}]`);
+    }
+
+    async function passTurn() {
+      await advanceTurn();
+      showToast('ผ่าน');
+    }
+
+    async function advanceTurn() {
+      const order = gameState.turnOrder || Object.keys(players);
+      const ci = order.indexOf(gameState.turn);
+      const next = order[(ci + 1) % order.length];
+      await db.ref(`dominoRooms/${roomId}/game/turn`).set(next);
+    }
+
+    // ========== Placement Logic ==========
+
+    // Normal piece: placed in a chosen direction from chain end
+    function calcNormalPlacement(end, domino, chosenDir) {
+      let connectVal, openVal;
+      if (domino.a === end.value) { connectVal = domino.a; openVal = domino.b; }
+      else { connectVal = domino.b; openVal = domino.a; }
+
+      const isTurn = (chosenDir !== end.dir);
+      let x, y, a, b, rotation;
+
+      switch (chosenDir) {
+        case 'right':
+          rotation = 0; a = connectVal; b = openVal;
+          x = end.x + DOMINO_H / 2; y = end.y;
+          break;
+        case 'left':
+          rotation = 0; a = openVal; b = connectVal;
+          x = end.x - DOMINO_H / 2; y = end.y;
+          break;
+        case 'down':
+          rotation = 90; a = connectVal; b = openVal;
+          x = end.x; y = end.y + DOMINO_H / 2;
+          break;
+        case 'up':
+          rotation = 90; a = openVal; b = connectVal;
+          x = end.x; y = end.y - DOMINO_H / 2;
+          break;
+      }
+
+      // Corner: position piece at the corner of the previous piece (edge-to-edge)
+      if (isTurn) {
+        const off = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] };
+        const [ox, oy] = off[end.dir];
+        const [nx, ny] = off[chosenDir];
+        x += ox * (DOMINO_W / 2);
+        y += oy * (DOMINO_W / 2);
+        x -= nx * (DOMINO_W / 2 - GAP);
+        y -= ny * (DOMINO_W / 2 - GAP);
+      }
+
+
+      let newEnd;
+      switch (chosenDir) {
+        case 'right': newEnd = { value: openVal, x: x + DOMINO_H / 2 + GAP, y, dir: 'right' }; break;
+        case 'left': newEnd = { value: openVal, x: x - DOMINO_H / 2 - GAP, y, dir: 'left' }; break;
+        case 'down': newEnd = { value: openVal, x, y: y + DOMINO_H / 2 + GAP, dir: 'down' }; break;
+        case 'up': newEnd = { value: openVal, x, y: y - DOMINO_H / 2 - GAP, dir: 'up' }; break;
+      }
+
+      return { x, y, a, b, rotation, newEnd };
+    }
+
+    // Double piece: perpendicular, chain continues STRAIGHT (no turn)
+    function calcDoublePlacement(end) {
+      const dir = end.dir;
+      const val = end.value;
+      const isHoriz = (dir === 'right' || dir === 'left');
+      const rotation = isHoriz ? 90 : 0;
+      let x, y, newEnd;
+
+      switch (dir) {
+        case 'right':
+          x = end.x + DOMINO_W / 2; y = end.y;
+          newEnd = { value: val, x: end.x + DOMINO_W + GAP, y, dir, straightOnly: true };
+          break;
+        case 'left':
+          x = end.x - DOMINO_W / 2; y = end.y;
+          newEnd = { value: val, x: end.x - DOMINO_W - GAP, y, dir, straightOnly: true };
+          break;
+        case 'down':
+          x = end.x; y = end.y + DOMINO_W / 2;
+          newEnd = { value: val, x, y: end.y + DOMINO_W + GAP, dir, straightOnly: true };
+          break;
+        case 'up':
+          x = end.x; y = end.y - DOMINO_W / 2;
+          newEnd = { value: val, x, y: end.y - DOMINO_W - GAP, dir, straightOnly: true };
+          break;
+      }
+      return { x, y, a: val, b: val, rotation, newEnd };
+    }
+
+    // Get all valid ghost placements for a domino
+    function getGhostPlacements(domino) {
+      const placements = [];
+      if (Object.keys(boardDominos).length === 0) return placements;
+      if (!domino) return placements;
+
+      const isDouble = domino.a === domino.b;
+
+      if (isDouble) {
+        // Double: show only 1 ghost — pick the side closest to camera center
+        let bestSide = null, bestDist = Infinity;
+        ['left', 'right'].forEach(side => {
+          const end = chainEnds[side];
+          if (!end || end.value !== domino.a) return;
+          const d = Math.hypot(end.x - camera.x, end.y - camera.y);
+          if (d < bestDist) { bestDist = d; bestSide = side; }
+        });
+        if (bestSide) {
+          const end = chainEnds[bestSide];
+          const r = calcDoublePlacement(end);
+          placements.push({ side: bestSide, chosenDir: end.dir, ...r });
+        }
+      } else {
+        // Find which sides match
+        const matchSides = [];
+        ['left', 'right'].forEach(side => {
+          const end = chainEnds[side];
+          if (!end) return;
+          if (domino.a === end.value || domino.b === end.value) matchSides.push(side);
+        });
+
+        // If both sides match same value, only show the side closest to camera
+        let sidesToShow = matchSides;
+        if (matchSides.length === 2 && chainEnds.left.value === chainEnds.right.value) {
+          const dL = Math.hypot(chainEnds.left.x - camera.x, chainEnds.left.y - camera.y);
+          const dR = Math.hypot(chainEnds.right.x - camera.x, chainEnds.right.y - camera.y);
+          sidesToShow = [dL < dR ? 'left' : 'right'];
+        }
+
+        sidesToShow.forEach(side => {
+          const end = chainEnds[side];
+          // After a Double: straight only. Otherwise: 3 directions
+          const dirs = end.straightOnly
+            ? [end.dir]
+            : [end.dir, TURN_CW[end.dir], TURN_CCW[end.dir]];
+          dirs.forEach(dir => {
+            const r = calcNormalPlacement(end, domino, dir);
+            placements.push({ side, chosenDir: dir, ...r });
+          });
+        });
+      }
+      return placements;
+    }
+
+    async function placeDomino(handIdx, side, chosenDir) {
+      const domino = myHand[handIdx];
+      if (!domino) return;
+
+      const pieces = Object.values(boardDominos);
+      const order = pieces.length;
+      const isDouble = domino.a === domino.b;
+      let x, y, a, b, rotation, newChainEnds;
+
+      if (pieces.length === 0) {
+        x = 0; y = 0; a = domino.a; b = domino.b;
+        rotation = isDouble ? 90 : 0;
+        if (isDouble) {
+          newChainEnds = {
+            left: { value: a, x: -DOMINO_W / 2 - GAP, y: 0, dir: 'left', straightOnly: true },
+            right: { value: a, x: DOMINO_W / 2 + GAP, y: 0, dir: 'right', straightOnly: true },
+          };
+        } else {
+          newChainEnds = {
+            left: { value: a, x: -DOMINO_H / 2 - GAP, y: 0, dir: 'left' },
+            right: { value: b, x: DOMINO_H / 2 + GAP, y: 0, dir: 'right' },
+          };
+        }
+      } else {
+        const end = chainEnds[side];
+        if (!end) return;
+        if (domino.a !== end.value && domino.b !== end.value) {
+          showToast('เลขไม่ตรง!'); return;
+        }
+        const result = isDouble ? calcDoublePlacement(end) : calcNormalPlacement(end, domino, chosenDir);
+        x = result.x; y = result.y; a = result.a; b = result.b; rotation = result.rotation;
+        newChainEnds = { ...chainEnds, [side]: result.newEnd };
+      }
+
+      const handSnap = await db.ref(`dominoRooms/${roomId}/hands/${playerId}`).once('value');
+      const handData = handSnap.val() || {};
+      const handKeys = Object.keys(handData);
+      const handKey = handKeys[handIdx];
+      if (!handKey) return;
+
+      const boardKey = `d${Date.now()}`;
+      const updates = {};
+      updates[`board/${boardKey}`] = { a, b, x, y, rotation, order, placedBy: playerId };
+      updates['chainEnds'] = newChainEnds;
+      updates[`hands/${playerId}/${handKey}`] = null;
+
+      await db.ref(`dominoRooms/${roomId}`).update(updates);
+      selectedHandIndex = -1;
+
+      const remainSnap = await db.ref(`dominoRooms/${roomId}/hands/${playerId}`).once('value');
+      const remain = remainSnap.val();
+      if (!remain || Object.keys(remain).length === 0) {
+        await db.ref(`dominoRooms/${roomId}/game`).update({ status: 'finished', winner: playerId });
+        return;
+      }
+      await advanceTurn();
+    }
+
+    function canPlace(domino) {
+      if (Object.keys(boardDominos).length === 0) return true;
+      if (!chainEnds.left || !chainEnds.right) return false;
+      return domino.a === chainEnds.left.value || domino.b === chainEnds.left.value ||
+        domino.a === chainEnds.right.value || domino.b === chainEnds.right.value;
+    }
+
+    // ========== Input ==========
+    function setupInputHandlers() {
+      let lastCursorUpdate = 0;
+      // All mouse handling is unified below
+
+      // ===== UNIFIED mousedown: drag boards/dominos, select hand, place, pan =====
+      canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 1 || e.button === 2 || (e.button === 0 && e.shiftKey)) {
+          isPanning = true;
+          panStart = { x: e.clientX, y: e.clientY };
+          camStart = { x: camera.x, y: camera.y };
+          canvas.classList.add('dragging');
+          e.preventDefault();
+          return;
+        }
+        if (e.button !== 0) return;
+        const world = screenToWorld(e.clientX, e.clientY);
+
+        // 0. Resize handle check (before title bar)
+        const allBoardIds = [playerId, 'pile', ...Object.keys(players).filter(p => p !== playerId)];
+        for (const bid of allBoardIds) {
+          if (hitResizeHandle(world.x, world.y, bid)) {
+            const wh = getBoardWH(bid);
+            dragging = { type: 'resize', id: bid, startW: wh.w, startH: wh.h, startX: world.x, startY: world.y };
+            return;
+          }
+        }
+
+        // 1. Board title bar drag
+        for (const bid of allBoardIds) {
+          if (hitTitleBar(world.x, world.y, bid)) {
+            const bp = getBoardPos(bid);
+            dragging = { type: 'board', id: bid, ox: world.x - bp.x, oy: world.y - bp.y };
+            return;
+          }
+        }
+
+        // 2. Own hand domino — start potential drag (confirm on mousemove)
+        for (let i = myHand.length - 1; i >= 0; i--) {
+          const p = getHandDominoPos(i);
+          if (Math.abs(world.x - p.x) < DOMINO_H / 2 && Math.abs(world.y - p.y) < DOMINO_W / 2) {
+            const key = handKeysCache[i];
+            if (key) {
+              dragging = { type: 'hand', key, idx: i, ox: world.x - p.x, oy: world.y - p.y, startX: e.clientX, startY: e.clientY, moved: false };
+              return;
+            }
+          }
+        }
+
+        // 3. Draw pile domino drag (relative to pile center)
+        const pileBp = getBoardPos('pile');
+        const pileKeys = Object.keys(drawPileData);
+        for (let i = pileKeys.length - 1; i >= 0; i--) {
+          const key = pileKeys[i];
+          const d = drawPileData[key];
+          const wx = pileBp.x + (d.rx || 0);
+          const wy = pileBp.y + (d.ry || 0);
+          if (Math.abs(world.x - wx) < DOMINO_H / 2 && Math.abs(world.y - wy) < DOMINO_W / 2) {
+            dragging = { type: 'pile', key, ox: world.x - wx, oy: world.y - wy, startX: e.clientX, startY: e.clientY, moved: false };
+            return;
+          }
+        }
+
+        // 3b. Canvas buttons — pile board
+        const pileBp2 = getBoardPos('pile');
+        const pileWH = getBoardWH('pile');
+        const pileBtnY = pileBp2.y + pileWH.h / 2 - 25;
+        if (gameState.status === 'waiting' && hitCanvasBtn(world.x, world.y, pileBp2.x - 50, pileBtnY, 90, 30)) {
+          startGame(); return;
+        }
+        if (hitCanvasBtn(world.x, world.y, pileBp2.x + 50, pileBtnY, 70, 30)) {
+          shufflePile(); return;
+        }
+
+        // 3c. Pass button on player board
+        const myBp = getBoardPos(playerId);
+        const myWH2 = getBoardWH(playerId);
+        if (hitCanvasBtn(world.x, world.y, myBp.x + myWH2.w / 2 - 50, myBp.y + myWH2.h / 2 - 25, 80, 30)) {
+          if (gameState.turn === playerId && gameState.status === 'playing') passTurn();
+          return;
+        }
+
+        // 4. Select hand domino (click, not drag)
+        if (handleHandBoardClick(world)) return;
+
+        // 5. Draw from pile
+        if (handleDrawPileClick(world)) return;
+
+        // 6. Place domino on game board
+        if (selectedHandIndex >= 0) handleBoardClick(e);
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        const world = screenToWorld(e.clientX, e.clientY);
+
+        if (isPanning) {
+          const dx = e.clientX - panStart.x;
+          const dy = e.clientY - panStart.y;
+          const cos = Math.cos(-camera.angle);
+          const sin = Math.sin(-camera.angle);
+          camera.x = camStart.x - (dx * cos - dy * sin) / camera.zoom;
+          camera.y = camStart.y - (dx * sin + dy * cos) / camera.zoom;
+        }
+
+        if (dragging) {
+          const nx = world.x - dragging.ox;
+          const ny = world.y - dragging.oy;
+          if (dragging.type === 'resize') {
+            const dx = world.x - dragging.startX;
+            const dy = world.y - dragging.startY;
+            // Convert world delta to screen-aligned delta
+            const ca = Math.cos(camera.angle), sa = Math.sin(camera.angle);
+            const screenDx = dx * ca - dy * sa;
+            const screenDy = dx * sa + dy * ca;
+            boardSizes[dragging.id] = {
+              w: Math.max(200, Math.min(2000, dragging.startW + screenDx * 2)),
+              h: Math.max(150, Math.min(2000, dragging.startH + screenDy * 2)),
+            };
+          } else if (dragging.type === 'board') {
+            boardPositions[dragging.id] = { x: nx, y: ny };
+            // Sync to Firebase (throttled)
+            if (!dragging.pendingBoardUpdate) {
+              dragging.pendingBoardUpdate = true;
+              requestAnimationFrame(() => {
+                db.ref(`dominoRooms/${roomId}/boardLayout/${dragging.id}`).set({ x: nx, y: ny });
+                if (dragging) dragging.pendingBoardUpdate = false;
+              });
+            }
+          } else if (dragging.type === 'hand') {
+            // Only start actual drag after 5px movement
+            if (!dragging.moved) {
+              const dist = Math.hypot(e.clientX - dragging.startX, e.clientY - dragging.startY);
+              if (dist < 5) return;
+              dragging.moved = true;
+            }
+            const bp = getBoardPos(playerId);
+            const wh = getBoardWH(playerId);
+            const isMyTurn = gameState.turn === playerId && gameState.status === 'playing';
+            let newRx = nx - bp.x;
+            let newRy = ny - bp.y;
+            // Clamp inside board UNLESS it's your turn (can drag out to place)
+            if (!isMyTurn) {
+              const halfW = wh.w / 2 - BOARD_PAD;
+              const halfH = wh.h / 2 - BOARD_PAD;
+              newRx = Math.max(-halfW, Math.min(halfW, newRx));
+              newRy = Math.max(-halfH, Math.min(halfH, newRy));
+            }
+            handLocalPos[dragging.key] = { rx: newRx, ry: newRy };
+          } else if (dragging.type === 'pile' && drawPileData[dragging.key]) {
+            if (!dragging.moved) {
+              const dist = Math.hypot(e.clientX - dragging.startX, e.clientY - dragging.startY);
+              if (dist < 5) return;
+              dragging.moved = true;
+            }
+            const pbp = getBoardPos('pile');
+            const pWH = getBoardWH('pile');
+            const pHalfW = pWH.w / 2 - BOARD_PAD;
+            const pHalfH = pWH.h / 2 - BOARD_PAD;
+            // No clamp — can always drag pile dominos freely (to own board = draw)
+            let newRx = nx - pbp.x;
+            let newRy = ny - pbp.y;
+            drawPileData[dragging.key].rx = newRx;
+            drawPileData[dragging.key].ry = newRy;
+            if (!dragging.pendingUpdate) {
+              dragging.pendingUpdate = true;
+              const sRx = newRx, sRy = newRy;
+              requestAnimationFrame(() => {
+                db.ref(`dominoRooms/${roomId}/drawPile/${dragging.key}`).update({ rx: sRx, ry: sRy });
+                if (dragging) dragging.pendingUpdate = false;
+              });
+            }
+          }
+        }
+
+        // Cursor sync
+        const now = Date.now();
+        if (now - lastCursorUpdate > 33) {
+          db.ref(`dominoRooms/${roomId}/cursors/${playerId}`).set({
+            x: world.x, y: world.y, name: playerName, color: playerColor
+          });
+          lastCursorUpdate = now;
+        }
+      });
+
+      canvas.addEventListener('mouseup', (e) => {
+        isPanning = false;
+        // Save final position on drop
+        if (dragging) {
+          if (dragging.type === 'hand' && dragging.key) {
+            if (!dragging.moved) {
+              // Didn't move — treat as click to select/deselect
+              const idx = dragging.idx;
+              if (gameState.turn !== playerId && gameState.status === 'playing') {
+                showToast('ยังไม่ถึงตาของคุณ');
+              } else {
+                selectedHandIndex = (selectedHandIndex === idx) ? -1 : idx;
+              }
+            } else {
+              // Moved — check if dropped on game board (place domino)
+              const world = screenToWorld(e.clientX, e.clientY);
+              const bp = getBoardPos(playerId);
+              const wh = getBoardWH(playerId);
+              const inBoard = Math.abs(world.x - bp.x) < wh.w / 2 && Math.abs(world.y - bp.y) < wh.h / 2;
+
+              if (!inBoard && gameState.turn === playerId && gameState.status === 'playing') {
+                // Dropped outside board — try to place on game board
+                const domino = myHand[dragging.idx];
+                if (domino) {
+                  const pieces = Object.values(boardDominos);
+                  if (pieces.length === 0) {
+                    // First piece — place at center
+                    selectedHandIndex = dragging.idx;
+                    placeDomino(dragging.idx, 'right', 'right');
+                  } else {
+                    // Find closest ghost placement
+                    const ghosts = getGhostPlacements(domino);
+                    let closest = null, minDist = Infinity;
+                    ghosts.forEach(g => {
+                      const d = Math.hypot(world.x - g.x, world.y - g.y);
+                      if (d < minDist) { minDist = d; closest = g; }
+                    });
+                    if (closest && minDist < DOMINO_H * 2) {
+                      selectedHandIndex = dragging.idx;
+                      placeDomino(dragging.idx, closest.side, closest.chosenDir);
+                    } else {
+                      // Too far — return to board, save position
+                      const pos = handLocalPos[dragging.key];
+                      if (pos) db.ref(`dominoRooms/${roomId}/hands/${playerId}/${dragging.key}`).update({ rx: pos.rx, ry: pos.ry });
+                      showToast('วางไม่ได้ ลากไปใกล้จุดวางมากกว่านี้');
+                    }
+                  }
+                }
+              } else {
+                // Still inside board — save position
+                const pos = handLocalPos[dragging.key];
+                if (pos) db.ref(`dominoRooms/${roomId}/hands/${playerId}/${dragging.key}`).update({ rx: pos.rx, ry: pos.ry });
+              }
+            }
+          } else if (dragging.type === 'pile' && dragging.key && drawPileData[dragging.key]) {
+            if (!dragging.moved) {
+              // Click = pick domino from pile
+              pickFromPile(dragging.key);
+            } else {
+              // Drag — check if dropped on own board = draw to hand
+              const world = screenToWorld(e.clientX, e.clientY);
+              const myBp = getBoardPos(playerId);
+              const myWh = getBoardWH(playerId);
+              const inMyBoard = Math.abs(world.x - myBp.x) < myWh.w / 2 && Math.abs(world.y - myBp.y) < myWh.h / 2;
+
+              if (inMyBoard) {
+                // Dropped on own board = draw this domino
+                pickFromPile(dragging.key);
+              } else {
+                // Save pile position
+                const d = drawPileData[dragging.key];
+                db.ref(`dominoRooms/${roomId}/drawPile/${dragging.key}`).update({ rx: d.rx, ry: d.ry });
+              }
+            }
+          } else if (dragging.type === 'board' && dragging.id) {
+            const bp = boardPositions[dragging.id];
+            if (bp) db.ref(`dominoRooms/${roomId}/boardLayout/${dragging.id}`).set(bp);
+          } else if (dragging.type === 'resize' && dragging.id) {
+            const wh = boardSizes[dragging.id];
+            if (wh) db.ref(`dominoRooms/${roomId}/boardSizes/${dragging.id}`).set(wh);
+          }
+        }
+        dragging = null;
+        canvas.classList.remove('dragging');
+      });
+
+      // Keyboard: Q/E rotate, R reset
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.key === 'q' || e.key === 'Q') camera.angle -= 0.1;
+        if (e.key === 'e' || e.key === 'E') camera.angle += 0.1;
+        if (e.key === 'r' || e.key === 'R') autoRotateCamera();
+      });
+
+      canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 0.9 : 1.1;
+        camera.zoom = Math.max(0.1, Math.min(3, camera.zoom * factor));
+        document.getElementById('zoom-level').textContent = Math.round(camera.zoom * 100) + '%';
+      });
+
+      document.getElementById('btn-zoom-in').onclick = () => {
+        camera.zoom = Math.min(3, camera.zoom * 1.2);
+        document.getElementById('zoom-level').textContent = Math.round(camera.zoom * 100) + '%';
+      };
+      document.getElementById('btn-zoom-out').onclick = () => {
+        camera.zoom = Math.max(0.1, camera.zoom / 1.2);
+        document.getElementById('zoom-level').textContent = Math.round(camera.zoom * 100) + '%';
+      };
+      document.getElementById('btn-zoom-reset').onclick = autoRotateCamera;
+    }
+
+    function autoRotateCamera() {
+      const pids = gameState.turnOrder || Object.keys(players);
+      const myIdx = pids.indexOf(playerId);
+      const total = pids.length;
+      // Rotate so own board appears at bottom of screen
+      // Player 0 at bottom (0°), Player 1 at top (180°), etc.
+      if (total <= 1) {
+        camera.angle = 0;
+      } else {
+        camera.angle = (myIdx / total) * Math.PI * 2;
+      }
+      camera.x = 0;
+      camera.y = 0;
+      camera.zoom = 0.35;
+      document.getElementById('zoom-level').textContent = '35%';
+    }
+
+    // Hand positions are now auto-initialized in the Firebase subscription
+
+    function handleHandBoardClick(world) {
+      for (let i = 0; i < myHand.length; i++) {
+        const p = getHandDominoPos(i);
+        if (Math.abs(world.x - p.x) < DOMINO_H / 2 && Math.abs(world.y - p.y) < DOMINO_W / 2) {
+          if (gameState.turn !== playerId && gameState.status === 'playing') {
+            showToast('ยังไม่ถึงตาของคุณ');
+            return true;
+          }
+          selectedHandIndex = (selectedHandIndex === i) ? -1 : i;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function handleDrawPileClick(world) {
+      if (gameState.status !== 'playing' || gameState.turn !== playerId) return false;
+      const count = gameState.drawPile || 0;
+      if (count <= 0) return false;
+      const cols = PILE_COLS;
+      const rows = Math.ceil(count / cols);
+      const bw = cols * (DOMINO_H + GAP) + BOARD_PAD * 2;
+      const bh = rows * (DOMINO_W + GAP) + BOARD_PAD * 2 + 20;
+      const px = DRAW_PILE_POS.x, py = DRAW_PILE_POS.y;
+      if (Math.abs(world.x - px) < bw / 2 && Math.abs(world.y - py) < bh / 2) {
+        drawDomino();
+        return true;
+      }
+      return false;
+    }
+
+    function handleBoardClick(e) {
+      if (gameState.turn !== playerId || gameState.status !== 'playing') return;
+      if (selectedHandIndex < 0) return;
+
+      const domino = myHand[selectedHandIndex];
+      if (!domino) return;
+
+      // First piece - place at center
+      if (Object.keys(boardDominos).length === 0) {
+        placeDomino(selectedHandIndex, 'right', 'right');
+        return;
+      }
+
+      if (!canPlace(domino)) { showToast('วางไม่ได้ ลองจั่วหรือผ่าน'); return; }
+
+      // Find closest ghost placement to click
+      const ghosts = getGhostPlacements(domino);
+      if (ghosts.length === 0) { showToast('วางไม่ได้'); return; }
+
+      const world = screenToWorld(e.clientX, e.clientY);
+      let closest = null, minDist = Infinity;
+      ghosts.forEach(g => {
+        const d = Math.hypot(world.x - g.x, world.y - g.y);
+        if (d < minDist) { minDist = d; closest = g; }
+      });
+
+      if (closest && minDist < DOMINO_H * 1.5) {
+        placeDomino(selectedHandIndex, closest.side, closest.chosenDir);
+      }
+    }
+
+    // ========== Render Loop ==========
+    function startRenderLoop() { requestAnimationFrame(renderFrame); }
+
+    function renderFrame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Apply camera transform (zoom + rotation)
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(camera.zoom, camera.zoom);
+      ctx.rotate(camera.angle);
+      ctx.translate(-camera.x, -camera.y);
+
+      drawGridWorld();
+      drawDrawPileArea();
+      drawOtherBoards();
+      drawBoardDominos();
+      drawGhostPlacements();
+      drawMyBoard();
+      drawCursors();
+
+      ctx.restore();
+
+      requestAnimationFrame(renderFrame);
+    }
+
+    // ========== Draw Grid (world coords, canvas transform applied) ==========
+    function drawGridWorld() {
+      const gridSize = 100;
+      // Estimate visible range (generous)
+      const range = 1500 / camera.zoom;
+      const startX = Math.floor((camera.x - range) / gridSize) * gridSize;
+      const startY = Math.floor((camera.y - range) / gridSize) * gridSize;
+      const endX = camera.x + range;
+      const endY = camera.y + range;
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1 / camera.zoom;
+      ctx.beginPath();
+      for (let x = startX; x <= endX; x += gridSize) {
+        ctx.moveTo(x, startY); ctx.lineTo(x, endY);
+      }
+      for (let y = startY; y <= endY; y += gridSize) {
+        ctx.moveTo(startX, y); ctx.lineTo(endX, y);
+      }
+      ctx.stroke();
+
+      // Center cross
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1.5 / camera.zoom;
+      ctx.beginPath();
+      ctx.moveTo(-16, 0); ctx.lineTo(16, 0);
+      ctx.moveTo(0, -16); ctx.lineTo(0, 16);
+      ctx.stroke();
+    }
+
+    // ========== Draw Board Dominos ==========
+    function drawBoardDominos() {
+      const pieces = Object.values(boardDominos);
+      pieces.sort((a, b) => (a.order || 0) - (b.order || 0));
+      pieces.forEach(d => {
+        drawDominoTile(d.x, d.y, d.a, d.b, 1, d.placedBy, d.rotation || 0);
+      });
+    }
+
+    function drawDominoTile(sx, sy, a, b, scale, placedBy, rotation) {
+      const w = DOMINO_H * scale;
+      const h = DOMINO_W * scale;
+      const halfW = w / 2;
+      const halfH = h / 2;
+
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate((rotation || 0) * Math.PI / 180);
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      roundRect(ctx, -halfW + 4, -halfH + 4, w, h, 7 * scale);
+      ctx.fill();
+
+      // Body
+      ctx.fillStyle = '#f5f0e8';
+      roundRect(ctx, -halfW, -halfH, w, h, 7 * scale);
+      ctx.fill();
+
+      // Border with player color
+      const pColor = placedBy && players[placedBy] ? players[placedBy].color : '#444';
+      ctx.strokeStyle = pColor;
+      ctx.lineWidth = 2.5 * scale;
+      roundRect(ctx, -halfW, -halfH, w, h, 7 * scale);
+      ctx.stroke();
+
+      // Inner border
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+      ctx.lineWidth = 1 * scale;
+      roundRect(ctx, -halfW + 3 * scale, -halfH + 3 * scale, w - 6 * scale, h - 6 * scale, 4 * scale);
+      ctx.stroke();
+
+      // Divider
+      ctx.beginPath();
+      ctx.moveTo(0, -halfH + 5 * scale);
+      ctx.lineTo(0, halfH - 5 * scale);
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 1.5 * scale;
+      ctx.stroke();
+
+      // Dots - left half = a, right half = b
+      drawDots(ctx, -halfW, -halfH, halfW, h, a, scale);
+      drawDots(ctx, 0, -halfH, halfW, h, b, scale);
+
+      ctx.restore();
+    }
+
+    function drawDots(ctx, ox, oy, w, h, value, scale) {
+      const dots = DOT_PATTERNS[value] || [];
+      const r = 4 * scale;
+
+      dots.forEach(([dx, dy]) => {
+        const cx = ox + dx * w;
+        const cy = oy + dy * h;
+        // Dot shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.beginPath();
+        ctx.arc(cx + 1, cy + 1, r, 0, Math.PI * 2);
+        ctx.fill();
+        // Dot
+        ctx.fillStyle = '#1a1a2e';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    // ========== Face-Down Domino ==========
+    function drawFaceDownDomino(sx, sy, scale, rot) {
+      const w = DOMINO_H * scale;
+      const h = DOMINO_W * scale;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate((rot || 0) * Math.PI / 180);
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      roundRect(ctx, -w / 2 + 3, -h / 2 + 3, w, h, 6 * scale); ctx.fill();
+      // Back
+      ctx.fillStyle = '#1a3a5c';
+      roundRect(ctx, -w / 2, -h / 2, w, h, 6 * scale); ctx.fill();
+      ctx.strokeStyle = '#2a6a9c';
+      ctx.lineWidth = 2 * scale;
+      roundRect(ctx, -w / 2, -h / 2, w, h, 6 * scale); ctx.stroke();
+      // Inner pattern
+      ctx.fillStyle = '#224a72';
+      roundRect(ctx, -w / 2 + 6 * scale, -h / 2 + 6 * scale, w - 12 * scale, h - 12 * scale, 3 * scale); ctx.fill();
+      // Center diamond
+      ctx.fillStyle = '#2a6a9c';
+      ctx.beginPath();
+      ctx.moveTo(0, -8 * scale); ctx.lineTo(8 * scale, 0);
+      ctx.lineTo(0, 8 * scale); ctx.lineTo(-8 * scale, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+
+    // ========== Canvas Buttons ==========
+    function drawCanvasBtn(wx, wy, w, h, text, color, enabled) {
+      ctx.save();
+      ctx.translate(wx, wy);
+      ctx.rotate(-camera.angle);
+      ctx.fillStyle = enabled ? color : 'rgba(50,50,50,0.6)';
+      roundRect(ctx, -w / 2, -h / 2, w, h, 6);
+      ctx.fill();
+      if (enabled) {
+        ctx.strokeStyle = '#fff3';
+        ctx.lineWidth = 1;
+        roundRect(ctx, -w / 2, -h / 2, w, h, 6);
+        ctx.stroke();
+      }
+      ctx.fillStyle = enabled ? '#fff' : '#666';
+      ctx.font = '13px "9LP-BOLD", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 0, 0);
+      ctx.restore();
+    }
+
+    function hitCanvasBtn(clickX, clickY, btnX, btnY, w, h) {
+      const dx = clickX - btnX, dy = clickY - btnY;
+      const cos = Math.cos(camera.angle), sin = Math.sin(camera.angle);
+      const lx = dx * cos - dy * sin;
+      const ly = dx * sin + dy * cos;
+      return Math.abs(lx) < w / 2 && Math.abs(ly) < h / 2;
+    }
+
+    function isAdmin() { return playerName.endsWith('-'); }
+
+    // ========== Board Rendering ==========
+    // FIXED world positions — same for everyone, camera rotation handles perspective
+    function getBoardPos(id) {
+      if (boardPositions[id]) return boardPositions[id];
+      if (id === 'pile') return { x: 0, y: 0 };
+      const pids = gameState.turnOrder || Object.keys(players);
+      const pidIdx = pids.indexOf(id);
+      const total = pids.length;
+      if (total <= 1) return { x: 0, y: 650 };
+      // Arrange around center: first player bottom, others evenly spaced
+      if (total === 2) return pidIdx === 0 ? { x: 0, y: 650 } : { x: 0, y: -650 };
+      if (total === 3) return [{ x: 0, y: 650 }, { x: -600, y: -400 }, { x: 600, y: -400 }][pidIdx];
+      return [{ x: 0, y: 650 }, { x: -700, y: 0 }, { x: 0, y: -650 }, { x: 700, y: 0 }][pidIdx] || { x: 0, y: 650 };
+    }
+    function getPlayerBoardPos(pid) { return getBoardPos(pid); }
+    function getBoardWH(id) {
+      const s = boardSizes[id];
+      return { w: s?.w || BOARD_W_DEFAULT, h: s?.h || BOARD_H_DEFAULT };
+    }
+
+    const TITLE_H = 28;
+
+    function drawTitleBar(wx, wy, bw, bh, color, label, side) {
+      ctx.fillStyle = color + '30';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      if (side === 'top') {
+        roundRect(ctx, wx - bw / 2, wy - bh / 2 - TITLE_H, bw, TITLE_H, 8); ctx.fill();
+      } else if (side === 'bottom') {
+        roundRect(ctx, wx - bw / 2, wy + bh / 2, bw, TITLE_H, 8); ctx.fill();
+      } else if (side === 'left') {
+        roundRect(ctx, wx - bw / 2 - TITLE_H, wy - bh / 2, TITLE_H, bh, 8); ctx.fill();
+      } else if (side === 'right') {
+        roundRect(ctx, wx + bw / 2, wy - bh / 2, TITLE_H, bh, 8); ctx.fill();
+      }
+      // Label — counter-rotate so always readable
+      if (label) {
+        let lx = wx, ly;
+        if (side === 'top') ly = wy - bh / 2 - TITLE_H / 2;
+        else if (side === 'bottom') ly = wy + bh / 2 + TITLE_H / 2;
+        else if (side === 'left') { lx = wx - bw / 2 - TITLE_H / 2; ly = wy; }
+        else { lx = wx + bw / 2 + TITLE_H / 2; ly = wy; }
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(-camera.angle);
+        ctx.fillStyle = color;
+        ctx.font = `13px '9LP-BOLD', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, 0, 0);
+        ctx.restore();
+      }
+    }
+
+    function getBoardTitleSides(wx, wy, isPile) {
+      if (isPile) return ['top', 'bottom', 'left', 'right'];
+      // Face toward center (0,0)
+      if (Math.abs(wy) >= Math.abs(wx)) {
+        return wy > 0 ? ['top'] : ['bottom'];
+      }
+      return wx > 0 ? ['left'] : ['right'];
+    }
+
+    function drawBoardRect(wx, wy, bw, bh, color, label, isPile) {
+      // Board body
+      ctx.fillStyle = 'rgba(16,24,48,0.8)';
+      roundRect(ctx, wx - bw / 2, wy - bh / 2, bw, bh, 10); ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2 / camera.zoom;
+      roundRect(ctx, wx - bw / 2, wy - bh / 2, bw, bh, 10); ctx.stroke();
+      // Title bars
+      const sides = getBoardTitleSides(wx, wy, isPile);
+      sides.forEach(side => drawTitleBar(wx, wy, bw, bh, color, label, side));
+      // Resize handle — find visual bottom-right corner based on camera angle
+      const cos = Math.cos(camera.angle), sin = Math.sin(camera.angle);
+      let bestCx = 0, bestCy = 0, bestScore = -Infinity;
+      for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+        const dx = sx * bw / 2, dy = sy * bh / 2;
+        const score = (dx * cos - dy * sin) + (dx * sin + dy * cos);
+        if (score > bestScore) { bestScore = score; bestCx = wx + dx; bestCy = wy + dy; }
+      }
+      ctx.save();
+      ctx.translate(bestCx, bestCy);
+      ctx.rotate(-camera.angle);
+      const rSize = 20;
+      ctx.fillStyle = color + '50';
+      ctx.beginPath();
+      ctx.moveTo(0, -rSize); ctx.lineTo(0, 0); ctx.lineTo(-rSize, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      for (let i = 1; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-i * 5, 0); ctx.lineTo(0, -i * 5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function hitResizeHandle(wx, wy, boardId) {
+      const bp = getBoardPos(boardId);
+      const wh = getBoardWH(boardId);
+      // Find the same visual bottom-right corner as drawBoardRect
+      const cos = Math.cos(camera.angle), sin = Math.sin(camera.angle);
+      let bestCx = 0, bestCy = 0, bestScore = -Infinity;
+      for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+        const dx = sx * wh.w / 2, dy = sy * wh.h / 2;
+        const score = (dx * cos - dy * sin) + (dx * sin + dy * cos);
+        if (score > bestScore) { bestScore = score; bestCx = bp.x + dx; bestCy = bp.y + dy; }
+      }
+      const rSize = 28;
+      return Math.hypot(wx - bestCx, wy - bestCy) < rSize;
+    }
+
+    function getHandDominoPos(i) {
+      const bp = getBoardPos(playerId);
+      const key = handKeysCache[i];
+      if (key && handLocalPos[key]) {
+        const p = handLocalPos[key];
+        return { x: bp.x + p.rx, y: bp.y + p.ry };
+      }
+      // Fallback grid
+      const cols = Math.max(Math.ceil(Math.sqrt(myHand.length)), 3);
+      const row = Math.floor(i / cols), col = i % cols;
+      return {
+        x: bp.x - (cols - 1) * (DOMINO_H + GAP) / 2 + col * (DOMINO_H + GAP),
+        y: bp.y - BOARD_SIZE / 2 + BOARD_PAD + DOMINO_W / 2 + 30 + row * (DOMINO_W + GAP + 10),
+      };
+    }
+
+    // Hit test: is point on any of the board's title bars?
+    function hitTitleBar(wx, wy, boardId) {
+      const bp = getBoardPos(boardId);
+      const { w: bw, h: bh } = getBoardWH(boardId);
+      const hw = bw / 2, hh = bh / 2;
+      const isPile = (boardId === 'pile');
+      const sides = getBoardTitleSides(bp.x, bp.y, isPile);
+      return sides.some(side => {
+        if (side === 'top') return wx > bp.x - hw && wx < bp.x + hw && wy > bp.y - hh - TITLE_H && wy < bp.y - hh;
+        if (side === 'bottom') return wx > bp.x - hw && wx < bp.x + hw && wy > bp.y + hh && wy < bp.y + hh + TITLE_H;
+        if (side === 'left') return wx > bp.x - hw - TITLE_H && wx < bp.x - hw && wy > bp.y - hh && wy < bp.y + hh;
+        if (side === 'right') return wx > bp.x + hw && wx < bp.x + hw + TITLE_H && wy > bp.y - hh && wy < bp.y + hh;
+        return false;
+      });
+    }
+
+    function drawMyBoard() {
+      const pos = getPlayerBoardPos(playerId);
+      const myWH = getBoardWH(playerId);
+      const limit = gameState.drawLimit || 7;
+      const drawDone = isDrawPhaseOver();
+      const label = drawDone
+        ? `${playerName} (${myHand.length} ใบ)`
+        : `${playerName} (${myHand.length}/${limit})`;
+      drawBoardRect(pos.x, pos.y, myWH.w, myWH.h, playerColor, label);
+      // Draw hand dominos face-up at their local positions
+      myHand.forEach((d, i) => {
+        const p = getHandDominoPos(i);
+        drawDominoTile(p.x, p.y, d.a, d.b, 1, playerId, 0);
+        ctx.globalAlpha = 1;
+        if (i === selectedHandIndex) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 3 / camera.zoom;
+          ctx.setLineDash([6, 3]);
+          ctx.strokeRect(p.x - DOMINO_H / 2 - 4, p.y - DOMINO_W / 2 - 4, DOMINO_H + 8, DOMINO_W + 8);
+          ctx.setLineDash([]);
+        }
+      });
+      // Pass button on player board
+      const isMyTurn = gameState.turn === playerId && gameState.status === 'playing';
+      drawCanvasBtn(pos.x + myWH.w / 2 - 50, pos.y + myWH.h / 2 - 25, 80, 30, 'ผ่าน', '#e94560', isMyTurn);
+    }
+
+    function drawOtherBoards() {
+      for (const [pid, p] of Object.entries(players)) {
+        if (pid === playerId) continue;
+        const pos = getPlayerBoardPos(pid);
+        const count = allHands[pid] || 0;
+        const isTurn = gameState.turn === pid;
+        const otherWH = getBoardWH(pid);
+        drawBoardRect(pos.x, pos.y, otherWH.w, otherWH.h, p.color, p.name + (isTurn ? ' ★' : '') + ` (${count})`);
+        // Face-down dominos — use saved positions from Firebase (rx, ry)
+        const handData = allHandsData[pid] || {};
+        const keys = Object.keys(handData);
+        keys.forEach((key, i) => {
+          const d = handData[key];
+          let wx, wy;
+          if (d.rx != null) {
+            // Use saved position (relative to board center)
+            wx = pos.x + d.rx;
+            wy = pos.y + d.ry;
+          } else {
+            // Default grid for dominos without saved position
+            const cols = Math.max(Math.ceil(Math.sqrt(keys.length)), 3);
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            wx = pos.x - (cols - 1) * (DOMINO_H + GAP) / 2 + col * (DOMINO_H + GAP);
+            wy = pos.y - BOARD_SIZE / 2 + BOARD_PAD + DOMINO_W / 2 + 30 + row * (DOMINO_W + GAP + 10);
+          }
+          drawFaceDownDomino(wx, wy, 1, 0);
+        });
+      }
+    }
+
+    function drawDrawPileArea() {
+      const pileKeys = Object.keys(drawPileData);
+      const count = pileKeys.length;
+      if (count <= 0 && gameState.status !== 'waiting') return;
+      const bp = getBoardPos('pile');
+      const pileWH = getBoardWH('pile');
+      drawBoardRect(bp.x, bp.y, pileWH.w, pileWH.h, '#ffd700', `กองจั่ว (${count})`, true);
+      // Draw dominos — admin sees face-up, others face-down
+      const showFaceUp = isAdmin();
+      pileKeys.forEach((key, i) => {
+        const d = drawPileData[key];
+        const wx = bp.x + (d.rx || 0);
+        const wy = bp.y + (d.ry || 0);
+        if (showFaceUp) {
+          drawDominoTile(wx, wy, d.a, d.b, 1, null, 0);
+        } else {
+          drawFaceDownDomino(wx, wy, 1, 0);
+        }
+      });
+      // Buttons on pile board
+      const btnY = bp.y + pileWH.h / 2 - 25;
+      const isWaiting = gameState.status === 'waiting';
+      const playerCount = Object.keys(players).length;
+      if (isWaiting) {
+        drawCanvasBtn(bp.x - 50, btnY, 90, 30, 'เริ่มเกม', '#e94560', playerCount >= 2);
+      }
+      drawCanvasBtn(bp.x + 50, btnY, 70, 30, 'สุ่ม', '#0f3460', count > 0);
+    }
+
+    // Shuffle pile domino positions randomly within pile board
+    async function shufflePile() {
+      const pileKeys = Object.keys(drawPileData);
+      if (pileKeys.length === 0) return;
+      const bp = getBoardPos('pile');
+      const wh = getBoardWH('pile');
+      const updates = {};
+      pileKeys.forEach(key => {
+        updates[`${key}/rx`] = (Math.random() - 0.5) * (wh.w - DOMINO_H - BOARD_PAD * 2);
+        updates[`${key}/ry`] = (Math.random() - 0.5) * (wh.h - DOMINO_W - BOARD_PAD * 2);
+      });
+      await db.ref(`dominoRooms/${roomId}/drawPile`).update(updates);
+      showToast('สุ่มตำแหน่งแล้ว');
+    }
+
+    // Pick a specific domino from pile to hand
+    // Check if all players have drawn their initial hand
+    function isDrawPhaseOver() {
+      const limit = gameState.drawLimit || 7;
+      const pids = gameState.turnOrder || Object.keys(players);
+      return pids.every(pid => (allHands[pid] || 0) >= limit);
+    }
+
+    async function pickFromPile(key) {
+      const domino = drawPileData[key];
+      if (!domino) { showToast('ไม่พบ domino'); return; }
+      const limit = gameState.drawLimit || 7;
+      const myCount = allHands[playerId] || 0;
+      // Draw phase: limit per player. After all drew: unlimited
+      if (!isDrawPhaseOver() && myCount >= limit) {
+        showToast(`รอผู้เล่นอื่นจั่วให้ครบ ${limit} ใบก่อน`);
+        return;
+      }
+      const newKey = `d${Date.now()}`;
+      const updates = {};
+      updates[`drawPile/${key}`] = null;
+      updates[`hands/${playerId}/${newKey}`] = { a: domino.a, b: domino.b };
+      updates['game/drawPile'] = Math.max(0, (gameState.drawPile || 0) - 1);
+      await db.ref(`dominoRooms/${roomId}`).update(updates);
+      if (!isDrawPhaseOver()) {
+        showToast(`หยิบได้ [${domino.a}|${domino.b}] (${myCount + 1}/${limit})`);
+      } else {
+        showToast(`หยิบได้ [${domino.a}|${domino.b}]`);
+      }
+    }
+
+    // ========== Ghost Placements ==========
+    function drawGhostPlacements() {
+      if (selectedHandIndex < 0 || gameState.turn !== playerId) return;
+
+      const domino = myHand[selectedHandIndex];
+      if (!domino) return;
+
+      // First piece - show center ghost
+      if (Object.keys(boardDominos).length === 0) {
+        const isDouble = domino.a === domino.b;
+        ctx.globalAlpha = 0.35;
+        drawDominoTile(0, 0, domino.a, domino.b, 1, playerId, isDouble ? 90 : 0);
+        ctx.globalAlpha = 1;
+        ctx.save();
+        ctx.translate(0, (isDouble ? DOMINO_H / 2 : DOMINO_W / 2) + 18);
+        ctx.rotate(-camera.angle);
+        ctx.fillStyle = 'rgba(233,69,96,0.7)';
+        ctx.font = `14px '9LP-BOLD', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('คลิกเพื่อวาง', 0, 0);
+        ctx.restore();
+        return;
+      }
+
+      const ghosts = getGhostPlacements(domino);
+      ghosts.forEach(g => {
+        ctx.globalAlpha = 0.3;
+        drawDominoTile(g.x, g.y, g.a, g.b, 1, playerId, g.rotation);
+        ctx.globalAlpha = 1;
+        const dirLabels = { right: '→', left: '←', down: '↓', up: '↑' };
+        ctx.save();
+        ctx.translate(g.x, g.y);
+        ctx.rotate(-camera.angle);
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(dirLabels[g.chosenDir] || '', 0, 0);
+        ctx.restore();
+      });
+    }
+
+    // ========== Draw Cursors ==========
+    function drawCursors() {
+      for (const [pid, c] of Object.entries(cursors)) {
+        if (pid === playerId) continue;
+
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        const cursorScale = 1 / camera.zoom;
+
+        // Arrow
+        ctx.fillStyle = c.color || '#fff';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, 20 * cursorScale);
+        ctx.lineTo(6 * cursorScale, 15 * cursorScale);
+        ctx.lineTo(13 * cursorScale, 24 * cursorScale);
+        ctx.lineTo(16 * cursorScale, 21 * cursorScale);
+        ctx.lineTo(9 * cursorScale, 12 * cursorScale);
+        ctx.lineTo(15 * cursorScale, 9 * cursorScale);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 1.5 * cursorScale;
+        ctx.stroke();
+
+        // Name tag
+        const name = c.name || 'Player';
+        ctx.font = `${13 * cursorScale}px "9LP-BOLD", sans-serif`;
+        const tw = ctx.measureText(name).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        roundRect(ctx, 18 * cursorScale, -6 * cursorScale, tw + 14 * cursorScale, 22 * cursorScale, 6 * cursorScale);
+        ctx.fill();
+        ctx.fillStyle = c.color || '#fff';
+        ctx.textAlign = 'left';
+        ctx.fillText(name, 25 * cursorScale, 10 * cursorScale);
+
+        ctx.restore();
+      }
+    }
+
+    // ========== Initial Render ==========
+    renderFrame();
+  </script>
+</body>
+
+</html>
