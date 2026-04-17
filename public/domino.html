@@ -853,7 +853,7 @@
             const col = i % cols;
             handLocalPos[key] = {
               rx: -(cols - 1) * (DOMINO_H + GAP) / 2 + col * (DOMINO_H + GAP),
-              ry: -BOARD_SIZE / 2 + BOARD_PAD + DOMINO_W / 2 + 30 + row * (DOMINO_W + GAP + 10),
+              ry: -BOARD_H_DEFAULT / 2 + BOARD_PAD + DOMINO_W / 2 + 30 + row * (DOMINO_W + GAP + 10),
             };
           }
         });
