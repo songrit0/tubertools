@@ -2085,11 +2085,25 @@
       if (!domino) { showToast('ไม่พบ domino'); return; }
       const limit = gameState.drawLimit || 7;
       const myCount = allHands[playerId] || 0;
-      // Draw phase: limit per player. After all drew: unlimited
-      if (!isDrawPhaseOver() && myCount >= limit) {
-        showToast(`รอผู้เล่นอื่นจั่วให้ครบ ${limit} ใบก่อน`);
-        return;
+      const boardCount = Object.keys(boardDominos).length;
+
+      if (!isDrawPhaseOver()) {
+        // Draw phase: limit per player
+        if (myCount >= limit) {
+          showToast(`รอผู้เล่นอื่นจั่วให้ครบ ${limit} ใบก่อน`);
+          return;
+        }
+      } else {
+        // After draw phase: must place a domino before drawing again
+        // Each player should have placed at least (myCount - limit) dominos
+        // Simple check: you can only draw if you have <= limit dominos in hand
+        // (means you placed at least one since last draw)
+        if (myCount > limit && boardCount > 0) {
+          showToast('วาง domino ก่อนถึงจะจั่วต่อได้');
+          return;
+        }
       }
+
       const newKey = `d${Date.now()}`;
       const updates = {};
       updates[`drawPile/${key}`] = null;
