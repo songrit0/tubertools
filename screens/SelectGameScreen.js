@@ -20,6 +20,7 @@ const GAMES = [
     emoji: '🗿',
     screen: 'VTuberSelection',
     tag: 'LIVE',
+    isUse: true,
   },
   {
     id: 'monopoly',
@@ -28,6 +29,7 @@ const GAMES = [
     emoji: '🎲',
     screen: 'MonopolyLobby',
     tag: 'NEW',
+    isUse: false,
   },
 ];
 
@@ -40,9 +42,11 @@ export default function SelectGameScreen({ navigation }) {
       style={({ pressed }) => [
         styles.gameCard,
         isWide && styles.gameCardWide,
-        pressed && styles.gameCardPressed,
+        !item.isUse && styles.gameCardDisabled,
+        item.isUse && pressed && styles.gameCardPressed,
       ]}
-      onPress={() => navigation.navigate(item.screen, { gameId: item.id })}
+      onPress={() => item.isUse && navigation.navigate(item.screen, { gameId: item.id })}
+      disabled={!item.isUse}
     >
       <View style={styles.gameCardLeft}>
         <Text style={styles.gameEmoji}>{item.emoji}</Text>
@@ -57,6 +61,9 @@ export default function SelectGameScreen({ navigation }) {
           )}
         </View>
         <Text style={styles.gameDesc}>{item.description}</Text>
+        {!item.isUse && (
+          <Text style={styles.disabledText}>ระบบกำลังปิดใช้งาน</Text>
+        )}
       </View>
       <Text style={styles.chevron}>›</Text>
     </Pressable>
@@ -187,6 +194,14 @@ const styles = StyleSheet.create({
   gameCardPressed: {
     backgroundColor: '#222222',
     borderColor: Colors.accent,
+  },
+  gameCardDisabled: {
+    opacity: 0.4,
+  },
+  disabledText: {
+    color: '#FF4444',
+    fontSize: 11,
+    marginTop: 4,
   },
   gameCardLeft: {
     width: 56,

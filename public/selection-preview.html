@@ -1,11 +1,24 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Selection Preview</title>
+  <title>แสดงผลการเลือก - VTuber Tools</title>
+  <meta name="description" content="หน้าจอแสดงผลการเลือก VTuber แบบเรียลไทม์">
+  <meta property="og:title" content="แสดงผลการเลือก - VTuber Tools">
+  <meta property="og:description" content="หน้าจอแสดงผลการเลือก VTuber แบบเรียลไทม์ สำหรับใช้งานใน OBS">
+  <meta property="og:image" content="https://tuber-tools-266cb.web.app/assets/assetslogo.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://tuber-tools-266cb.web.app/assets/assetslogo.png">
+  <link rel="icon" href="/assets/assetslogo.png">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       background: transparent;
@@ -112,9 +125,12 @@
       font-size: 14px;
     }
 
-    .waiting.hidden { display: none; }
+    .waiting.hidden {
+      display: none;
+    }
   </style>
 </head>
+
 <body>
   <div class="waiting" id="waiting">Waiting for selection...</div>
 
@@ -184,4 +200,5 @@
     });
   </script>
 </body>
+
 </html>
