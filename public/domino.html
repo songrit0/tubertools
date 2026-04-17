@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Domino - VTuber Tools</title>
   <meta name="description" content="เกมโดมิโน่ออนไลน์แบบเรียลไทม์">
-  <meta property="og:title" content="Domino - VTuber Tools">
+  <meta property="og:title" content="Domino">
   <meta property="og:description" content="เกมโดมิโน่ออนไลน์แบบเรียลไทม์">
   <meta property="og:image" content="https://tuber-tools-266cb.web.app/assets/assetslogo.png">
   <link rel="icon" href="/assets/assetslogo.png">
@@ -952,63 +952,10 @@
       return grid;
     }
 
-    function renderHand() {
-      const panel = document.getElementById('hand-panel');
-      panel.innerHTML = '';
-
-      myHand.forEach((d, i) => {
-        const el = document.createElement('div');
-        const placeable = canPlace(d);
-        el.className = 'hand-domino'
-          + (i === selectedHandIndex ? ' selected-hand' : '')
-          + (!placeable && gameState.status === 'playing' ? ' cant-place' : '');
-
-        const topHalf = document.createElement('div');
-        topHalf.className = 'half';
-        topHalf.appendChild(createDotGrid(d.a));
-
-        const divider = document.createElement('div');
-        divider.className = 'divider';
-
-        const bottomHalf = document.createElement('div');
-        bottomHalf.className = 'half';
-        bottomHalf.appendChild(createDotGrid(d.b));
-
-        el.appendChild(topHalf);
-        el.appendChild(divider);
-        el.appendChild(bottomHalf);
-
-        el.onclick = () => {
-          if (gameState.turn !== playerId && gameState.status === 'playing') {
-            showToast('ยังไม่ถึงตาของคุณ');
-            return;
-          }
-          selectedHandIndex = (selectedHandIndex === i) ? -1 : i;
-          renderHand();
-        };
-        panel.appendChild(el);
-      });
-    }
+    function renderHand() { /* Hand rendered on canvas — no DOM needed */ }
 
     // ========== Action Buttons ==========
-    function updateActionButtons() {
-      const isMyTurn = gameState.turn === playerId;
-      const isPlaying = gameState.status === 'playing';
-      const isWaiting = gameState.status === 'waiting';
-      const playerCount = Object.keys(players).length;
-
-      document.getElementById('btn-draw').disabled = !(isPlaying && isMyTurn && gameState.drawPile > 0);
-      document.getElementById('btn-pass').disabled = !(isPlaying && isMyTurn);
-      document.getElementById('btn-start').disabled = !(isWaiting && playerCount >= 2);
-
-      document.getElementById('btn-start').classList.toggle('hidden', !isWaiting);
-      document.getElementById('btn-draw').classList.toggle('hidden', isWaiting);
-      document.getElementById('btn-pass').classList.toggle('hidden', isWaiting);
-    }
-
-    document.getElementById('btn-start').onclick = startGame;
-    document.getElementById('btn-draw').onclick = drawDomino;
-    document.getElementById('btn-pass').onclick = passTurn;
+    function updateActionButtons() { /* Buttons on canvas now */ }
 
     // ========== Game Logic ==========
     function generateFullSet() {
@@ -1418,14 +1365,6 @@
             };
           } else if (dragging.type === 'board') {
             boardPositions[dragging.id] = { x: nx, y: ny };
-            // Sync to Firebase (throttled)
-            if (!dragging.pendingBoardUpdate) {
-              dragging.pendingBoardUpdate = true;
-              requestAnimationFrame(() => {
-                db.ref(`dominoRooms/${roomId}/boardLayout/${dragging.id}`).set({ x: nx, y: ny });
-                if (dragging) dragging.pendingBoardUpdate = false;
-              });
-            }
           } else if (dragging.type === 'hand') {
             // Only start actual drag after 5px movement
             if (!dragging.moved) {
@@ -1461,20 +1400,12 @@
             let newRy = ny - pbp.y;
             drawPileData[dragging.key].rx = newRx;
             drawPileData[dragging.key].ry = newRy;
-            if (!dragging.pendingUpdate) {
-              dragging.pendingUpdate = true;
-              const sRx = newRx, sRy = newRy;
-              requestAnimationFrame(() => {
-                db.ref(`dominoRooms/${roomId}/drawPile/${dragging.key}`).update({ rx: sRx, ry: sRy });
-                if (dragging) dragging.pendingUpdate = false;
-              });
-            }
           }
         }
 
         // Cursor sync
         const now = Date.now();
-        if (now - lastCursorUpdate > 33) {
+        if (now - lastCursorUpdate > 200) {
           db.ref(`dominoRooms/${roomId}/cursors/${playerId}`).set({
             x: world.x, y: world.y, name: playerName, color: playerColor
           });
@@ -1680,12 +1611,19 @@
     // ========== Render Loop ==========
     function startRenderLoop() { requestAnimationFrame(renderFrame); }
 
+    // Cached per-frame values
+    let frameCos = 1, frameSin = 0;
+
     function renderFrame() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#1a1a2e';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Apply camera transform (zoom + rotation)
+      // Cache trig for this frame
+      frameCos = Math.cos(camera.angle);
+      frameSin = Math.sin(camera.angle);
+
+      // Apply camera transform
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.scale(camera.zoom, camera.zoom);
@@ -1959,12 +1897,11 @@
       // Title bars
       const sides = getBoardTitleSides(wx, wy, isPile);
       sides.forEach(side => drawTitleBar(wx, wy, bw, bh, color, label, side));
-      // Resize handle — find visual bottom-right corner based on camera angle
-      const cos = Math.cos(camera.angle), sin = Math.sin(camera.angle);
+      // Resize handle — find visual bottom-right corner
       let bestCx = 0, bestCy = 0, bestScore = -Infinity;
       for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
         const dx = sx * bw / 2, dy = sy * bh / 2;
-        const score = (dx * cos - dy * sin) + (dx * sin + dy * cos);
+        const score = (dx * frameCos - dy * frameSin) + (dx * frameSin + dy * frameCos);
         if (score > bestScore) { bestScore = score; bestCx = wx + dx; bestCy = wy + dy; }
       }
       ctx.save();
