@@ -901,8 +901,14 @@
             showTurnBanner(`ตาของ ${p?.name || '...'}`);
           }
         }
-        if (gameState.status === 'finished') {
-          showTurnBanner(gameState.winner ? `${players[gameState.winner]?.name} ชนะ!` : 'เกมจบแล้ว!');
+        if (gameState.status === 'finished' && prevStatus !== 'finished') {
+          const winnerName = gameState.winner ? players[gameState.winner]?.name : null;
+          const winPts = gameState.winScore || 0;
+          showTurnBanner(winnerName ? `${winnerName} ชนะ! (+${winPts} pt)` : 'เกมจบแล้ว!');
+          // Auto restart after 3 seconds
+          setTimeout(() => {
+            if (gameState.status === 'finished') autoRestartGame();
+          }, 3000);
         }
       });
 
@@ -975,6 +981,45 @@
         [set[i], set[j]] = [set[j], set[i]];
       }
       return set;
+    }
+
+    async function autoRestartGame() {
+      const pids = gameState.turnOrder || Object.keys(players);
+      if (pids.length < 2) return;
+      // Rotate turn order — loser (or next player) goes first
+      const prevWinner = gameState.winner;
+      const winnerIdx = pids.indexOf(prevWinner);
+      const nextFirst = pids[(winnerIdx + 1) % pids.length]; // loser starts next
+
+      const allDominos = generateFullSet();
+      const updates = {};
+      const pileCols = PILE_COLS;
+      const totalRows = Math.ceil(allDominos.length / pileCols);
+      allDominos.forEach((d, i) => {
+        const col = i % pileCols;
+        const row = Math.floor(i / pileCols);
+        updates[`drawPile/d${i}`] = {
+          ...d,
+          rx: -(pileCols - 1) * (DOMINO_H + GAP) / 2 + col * (DOMINO_H + GAP),
+          ry: -(totalRows - 1) * (DOMINO_W + GAP + 10) / 2 + row * (DOMINO_W + GAP + 10),
+        };
+      });
+      pids.forEach(pid => { updates[`hands/${pid}`] = null; });
+      handLocalPos = {};
+      updates['board'] = null;
+      updates['chainEnds'] = null;
+      const drawLimit = pids.length <= 2 ? 7 : (pids.length <= 4 ? 5 : 4);
+      updates['game'] = {
+        status: 'playing',
+        turn: nextFirst,
+        turnOrder: pids,
+        drawPile: allDominos.length,
+        drawLimit,
+        passCount: 0,
+      };
+      // Keep scores — don't clear
+      await db.ref(`dominoRooms/${roomId}`).update(updates);
+      showToast('รอบใหม่! หยิบ domino จากกองจั่ว');
     }
 
     async function startGame() {
@@ -1326,7 +1371,7 @@
     // ========== Input ==========
     function setupInputHandlers() {
       let lastCursorUpdate = 0;
-      // All mouse handling is unified below
+      let cursorBuffer = []; // Buffer mouse points to send as batch
 
       // ===== UNIFIED mousedown: drag boards/dominos, select hand, place, pan =====
       canvas.addEventListener('mousedown', (e) => {
@@ -1481,12 +1526,20 @@
           }
         }
 
-        // Cursor sync
+        // Cursor sync — buffer points, send as batch
+        cursorBuffer.push({ x: Math.round(world.x), y: Math.round(world.y) });
         const now = Date.now();
-        if (now - lastCursorUpdate > 200) {
+        if (now - lastCursorUpdate > 150 && cursorBuffer.length > 0) {
+          // Downsample if too many points (keep max 8)
+          let pts = cursorBuffer;
+          if (pts.length > 8) {
+            const step = pts.length / 8;
+            pts = Array.from({ length: 8 }, (_, i) => cursorBuffer[Math.floor(i * step)]);
+          }
           db.ref(`dominoRooms/${roomId}/cursors/${playerId}`).set({
-            x: world.x, y: world.y, name: playerName, color: playerColor
+            pts, name: playerName, color: playerColor, t: now
           });
+          cursorBuffer = [];
           lastCursorUpdate = now;
         }
       });
@@ -1714,6 +1767,7 @@
       drawBoardDominos();
       drawGhostPlacements();
       drawMyBoard();
+      drawTurnArrow();
       drawCursors();
 
       ctx.restore();
@@ -1965,12 +2019,24 @@
       return wx > 0 ? ['left'] : ['right'];
     }
 
-    function drawBoardRect(wx, wy, bw, bh, color, label, isPile) {
+    function drawBoardRect(wx, wy, bw, bh, color, label, isPile, isActive) {
+      // Glow effect when it's this player's turn
+      if (isActive) {
+        const pulse = 0.4 + 0.3 * Math.sin(Date.now() / 300);
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 25 + 10 * Math.sin(Date.now() / 300);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4 / camera.zoom;
+        ctx.globalAlpha = pulse;
+        roundRect(ctx, wx - bw / 2 - 3, wy - bh / 2 - 3, bw + 6, bh + 6, 12); ctx.stroke();
+        ctx.restore();
+      }
       // Board body
       ctx.fillStyle = 'rgba(16,24,48,0.8)';
       roundRect(ctx, wx - bw / 2, wy - bh / 2, bw, bh, 10); ctx.fill();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2 / camera.zoom;
+      ctx.strokeStyle = isActive ? color : color + 'aa';
+      ctx.lineWidth = isActive ? 3 / camera.zoom : 2 / camera.zoom;
       roundRect(ctx, wx - bw / 2, wy - bh / 2, bw, bh, 10); ctx.stroke();
       // Title bars
       const sides = getBoardTitleSides(wx, wy, isPile);
@@ -2073,6 +2139,45 @@
       ctx.restore();
     }
 
+    function drawTurnArrow() {
+      if (gameState.status !== 'playing' || !gameState.turn) return;
+      const turnPid = gameState.turn;
+      const bp = getBoardPos(turnPid);
+      const p = players[turnPid];
+      if (!p) return;
+      // Arrow from center (0,0) toward the active player's board
+      const dx = bp.x, dy = bp.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 50) return;
+      const nx = dx / dist, ny = dy / dist;
+      // Arrow position — 120px from center toward player
+      const ax = nx * 120, ay = ny * 120;
+      const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 400);
+      ctx.save();
+      ctx.translate(ax, ay);
+      ctx.rotate(Math.atan2(dy, dx));
+      ctx.globalAlpha = pulse;
+      // Arrow shape
+      ctx.fillStyle = p.color || '#fff';
+      ctx.beginPath();
+      ctx.moveTo(20, 0);
+      ctx.lineTo(-8, -12);
+      ctx.lineTo(-3, 0);
+      ctx.lineTo(-8, 12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // Player name
+      ctx.rotate(-Math.atan2(dy, dx)); // un-rotate for text
+      ctx.rotate(-camera.angle);
+      ctx.fillStyle = p.color || '#fff';
+      ctx.font = '12px "9LP-BOLD", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(turnPid === playerId ? 'ตาคุณ!' : p.name, 0, -20);
+      ctx.restore();
+    }
+
     function drawMyBoard() {
       const pos = getPlayerBoardPos(playerId);
       const myWH = getBoardWH(playerId);
@@ -2081,7 +2186,8 @@
       const label = drawDone
         ? `${playerName} (${myHand.length} ใบ)`
         : `${playerName} (${myHand.length}/${limit})`;
-      drawBoardRect(pos.x, pos.y, myWH.w, myWH.h, playerColor, label);
+      const isMyTurnNow = gameState.turn === playerId && gameState.status === 'playing';
+      drawBoardRect(pos.x, pos.y, myWH.w, myWH.h, playerColor, label, false, isMyTurnNow);
       drawScoreBadge(pos.x, pos.y, myWH.w, myWH.h, playerId, playerColor);
       // Draw hand dominos face-up at their local positions
       myHand.forEach((d, i) => {
@@ -2108,7 +2214,7 @@
         const count = allHands[pid] || 0;
         const isTurn = gameState.turn === pid;
         const otherWH = getBoardWH(pid);
-        drawBoardRect(pos.x, pos.y, otherWH.w, otherWH.h, p.color, p.name + (isTurn ? ' ★' : '') + ` (${count})`);
+        drawBoardRect(pos.x, pos.y, otherWH.w, otherWH.h, p.color, p.name + (isTurn ? ' ★' : '') + ` (${count})`, false, isTurn);
         drawScoreBadge(pos.x, pos.y, otherWH.w, otherWH.h, pid, p.color);
         // Face-down dominos — use saved positions from Firebase (rx, ry)
         const handData = allHandsData[pid] || {};
@@ -2264,42 +2370,90 @@
     }
 
     // ========== Draw Cursors ==========
+    // Cursor playback system — queue-based smooth animation
+    let cursorQueues = {};  // {pid: [{x,y}, ...]} — points to animate through
+    let cursorPos = {};     // {pid: {x, y}} — current smooth position
+    let cursorMeta = {};    // {pid: {name, color}} — cached info
+    let lastCursorTs = {};  // {pid: timestamp} — to detect new batches
+
     function drawCursors() {
       for (const [pid, c] of Object.entries(cursors)) {
         if (pid === playerId) continue;
 
-        ctx.save();
-        ctx.translate(c.x, c.y);
-        const cursorScale = 1 / camera.zoom;
+        // Detect new batch of points
+        if (c.t !== lastCursorTs[pid]) {
+          lastCursorTs[pid] = c.t;
+          if (c.pts && c.pts.length > 0) {
+            if (!cursorQueues[pid]) cursorQueues[pid] = [];
+            cursorQueues[pid].push(...c.pts);
+            // Cap queue to prevent buildup
+            if (cursorQueues[pid].length > 30) cursorQueues[pid] = cursorQueues[pid].slice(-20);
+          }
+          cursorMeta[pid] = { name: c.name || 'Player', color: c.color || '#fff' };
+        }
 
-        // Arrow
-        ctx.fillStyle = c.color || '#fff';
+        // Initialize position
+        if (!cursorPos[pid]) {
+          const first = c.pts?.[0] || c;
+          cursorPos[pid] = { x: first.x || 0, y: first.y || 0 };
+        }
+
+        // Consume points from queue — 1-2 points per frame for smooth playback
+        const queue = cursorQueues[pid];
+        if (queue && queue.length > 0) {
+          // Consume more points if queue is building up (catch up)
+          const consume = queue.length > 10 ? 3 : queue.length > 5 ? 2 : 1;
+          for (let i = 0; i < consume && queue.length > 0; i++) {
+            const target = queue.shift();
+            // Lerp toward target
+            cursorPos[pid].x += (target.x - cursorPos[pid].x) * 0.5;
+            cursorPos[pid].y += (target.y - cursorPos[pid].y) * 0.5;
+          }
+        }
+
+        const sx = cursorPos[pid].x;
+        const sy = cursorPos[pid].y;
+        const s = 1 / camera.zoom;
+        const meta = cursorMeta[pid] || { name: 'Player', color: '#fff' };
+
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(-camera.angle);
+
+        // Outer glow
         ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, 20 * cursorScale);
-        ctx.lineTo(6 * cursorScale, 15 * cursorScale);
-        ctx.lineTo(13 * cursorScale, 24 * cursorScale);
-        ctx.lineTo(16 * cursorScale, 21 * cursorScale);
-        ctx.lineTo(9 * cursorScale, 12 * cursorScale);
-        ctx.lineTo(15 * cursorScale, 9 * cursorScale);
-        ctx.closePath();
+        ctx.arc(0, 0, 22 * s, 0, Math.PI * 2);
+        ctx.fillStyle = meta.color + '20';
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-        ctx.lineWidth = 1.5 * cursorScale;
+
+        // Circle
+        ctx.beginPath();
+        ctx.arc(0, 0, 18 * s, 0, Math.PI * 2);
+        ctx.fillStyle = meta.color + '30';
+        ctx.fill();
+        ctx.strokeStyle = meta.color;
+        ctx.lineWidth = 2 * s;
         ctx.stroke();
 
-        // Name tag
-        const name = c.name || 'Player';
-        ctx.font = `${13 * cursorScale}px "9LP-BOLD", sans-serif`;
-        const tw = ctx.measureText(name).width;
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        roundRect(ctx, 18 * cursorScale, -6 * cursorScale, tw + 14 * cursorScale, 22 * cursorScale, 6 * cursorScale);
-        ctx.fill();
-        ctx.fillStyle = c.color || '#fff';
-        ctx.textAlign = 'left';
-        ctx.fillText(name, 25 * cursorScale, 10 * cursorScale);
+        // Name inside
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${10 * s}px "9LP-BOLD", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const shortName = meta.name.length > 4 ? meta.name.slice(0, 4) : meta.name;
+        ctx.fillText(shortName, 0, 0);
 
         ctx.restore();
+      }
+
+      // Clean up disconnected cursors
+      for (const pid of Object.keys(cursorPos)) {
+        if (!cursors[pid]) {
+          delete cursorPos[pid];
+          delete cursorQueues[pid];
+          delete cursorMeta[pid];
+          delete lastCursorTs[pid];
+        }
       }
     }
 
