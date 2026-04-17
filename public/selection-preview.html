@@ -14,6 +14,13 @@
   <meta name="twitter:image" content="https://tuber-tools-266cb.web.app/assets/assetslogo.png">
   <link rel="icon" href="/assets/assetslogo.png">
   <style>
+    @font-face {
+      font-family: '9LP-BOLD';
+      src: url('/fonts/9LP-BOLD.OTF') format('opentype');
+      font-weight: bold;
+      font-display: swap;
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -23,7 +30,7 @@
     body {
       background: transparent;
       overflow: hidden;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: '9LP-BOLD', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
     .overlay {
@@ -105,10 +112,10 @@
     }
 
     .status-text {
-      font-size: 72px;
-      font-weight: 900;
+      font-size: 120px;
+      font-weight: bold;
       color: #fff;
-      font-style: italic;
+      font-family: '9LP-BOLD', sans-serif;
       letter-spacing: 2px;
       text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;
       user-select: none;

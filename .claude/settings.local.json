@@ -7,7 +7,9 @@
       "Bash(node -c components/monopoly/BoardView.js)",
       "Bash(node -c components/monopoly/PlayerPanel.js)",
       "Bash(node -c screens/monopoly/MonopolyGameScreen.js)",
-      "Bash(npx expo:*)"
+      "Bash(npx expo:*)",
+      "Bash(mkdir -p \"c:/Users/MARU/12vtuber/public/fonts\")",
+      "Bash(cp \"c:/Users/MARU/12vtuber/assets/font/9LP-BOLD.OTF\" \"c:/Users/MARU/12vtuber/public/fonts/9LP-BOLD.OTF\")"
     ]
   }
 }
