@@ -661,6 +661,7 @@
     let boardPositions = {}; // {id: {x,y}}
     let boardSizes = {};     // {id: size} — per-board size override
     let handKeysCache = [];
+    let playerScores = {}; // {playerId: totalScore}
 
     // ========== Canvas ==========
     const canvas = document.getElementById('game-canvas');
@@ -831,6 +832,10 @@
 
       db.ref(`dominoRooms/${roomId}/boardSizes`).on('value', snap => {
         boardSizes = snap.val() || {};
+      });
+
+      db.ref(`dominoRooms/${roomId}/scores`).on('value', snap => {
+        playerScores = snap.val() || {};
       });
 
       db.ref(`dominoRooms/${roomId}/chainEnds`).on('value', snap => {
@@ -1033,6 +1038,17 @@
     }
 
     async function passTurn() {
+      const passCount = (gameState.passCount || 0) + 1;
+      const playerCount = (gameState.turnOrder || Object.keys(players)).length;
+      const pileEmpty = Object.keys(drawPileData).length === 0;
+
+      if (pileEmpty && passCount >= playerCount) {
+        // Everyone passed + pile empty = game over (blocked)
+        await endGameBlocked();
+        return;
+      }
+
+      await db.ref(`dominoRooms/${roomId}/game/passCount`).set(passCount);
       await advanceTurn();
       showToast('ผ่าน');
     }
@@ -1042,6 +1058,64 @@
       const ci = order.indexOf(gameState.turn);
       const next = order[(ci + 1) % order.length];
       await db.ref(`dominoRooms/${roomId}/game/turn`).set(next);
+    }
+
+    // Reset pass count when someone places a domino
+    async function resetPassCount() {
+      if (gameState.passCount > 0) {
+        await db.ref(`dominoRooms/${roomId}/game/passCount`).set(0);
+      }
+    }
+
+    // Game ends when blocked (no one can play, pile empty)
+    // Calculate win score = sum of all opponents' remaining dots
+    function calcWinScore(winnerId) {
+      const pids = gameState.turnOrder || Object.keys(players);
+      let total = 0;
+      pids.forEach(pid => {
+        if (pid === winnerId) return;
+        const handData = allHandsData[pid] || {};
+        Object.values(handData).forEach(d => { total += (d.a || 0) + (d.b || 0); });
+      });
+      return total;
+    }
+
+    // Add score to player's total in Firebase
+    async function addWinScore(winnerId, score) {
+      const ref = db.ref(`dominoRooms/${roomId}/scores/${winnerId}`);
+      const snap = await ref.once('value');
+      const current = snap.val() || 0;
+      await ref.set(current + score);
+    }
+
+    async function endGameBlocked() {
+      const pids = gameState.turnOrder || Object.keys(players);
+      // Winner = player with fewest dominos
+      let minCount = Infinity, winnerId = null;
+      pids.forEach(pid => {
+        const count = allHands[pid] || 0;
+        if (count < minCount) { minCount = count; winnerId = pid; }
+      });
+
+      // Calculate scores (sum of dots)
+      let resultMsg = 'เกมจบ! (ทุกคนผ่าน)\n';
+      pids.forEach(pid => {
+        const handData = allHandsData[pid] || {};
+        let score = 0;
+        Object.values(handData).forEach(d => { score += (d.a || 0) + (d.b || 0); });
+        const p = players[pid];
+        resultMsg += `${p?.name || pid}: ${allHands[pid] || 0} ใบ (${score} แต้ม)\n`;
+      });
+
+      const winScore = calcWinScore(winnerId);
+      await addWinScore(winnerId, winScore);
+      await db.ref(`dominoRooms/${roomId}/game`).update({
+        status: 'finished',
+        winner: winnerId,
+        winScore,
+        passCount: 0,
+      });
+      showToast(resultMsg, 5000);
     }
 
     // ========== Placement Logic ==========
@@ -1232,9 +1306,13 @@
       const remainSnap = await db.ref(`dominoRooms/${roomId}/hands/${playerId}`).once('value');
       const remain = remainSnap.val();
       if (!remain || Object.keys(remain).length === 0) {
-        await db.ref(`dominoRooms/${roomId}/game`).update({ status: 'finished', winner: playerId });
+        // Winner gets points = sum of all opponents' remaining dots
+        const winScore = calcWinScore(playerId);
+        await addWinScore(playerId, winScore);
+        await db.ref(`dominoRooms/${roomId}/game`).update({ status: 'finished', winner: playerId, winScore });
         return;
       }
+      await resetPassCount();
       await advanceTurn();
     }
 
@@ -1970,6 +2048,31 @@
       });
     }
 
+    function drawScoreBadge(wx, wy, bw, bh, pid, color) {
+      const score = playerScores[pid] || 0;
+      if (score <= 0) return;
+      const isWinner = gameState.winner === pid && gameState.status === 'finished';
+      ctx.save();
+      ctx.translate(wx + bw/2 + 10, wy - bh/2);
+      ctx.rotate(-camera.angle);
+      // Badge background
+      ctx.fillStyle = isWinner ? '#ffd700' : color;
+      roundRect(ctx, 0, -15, 70, 30, 8);
+      ctx.fill();
+      // Score text
+      ctx.fillStyle = isWinner ? '#000' : '#fff';
+      ctx.font = 'bold 16px "9LP-BOLD", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${score} pt`, 35, 0);
+      // Crown for winner
+      if (isWinner) {
+        ctx.font = '14px sans-serif';
+        ctx.fillText('👑', 35, -20);
+      }
+      ctx.restore();
+    }
+
     function drawMyBoard() {
       const pos = getPlayerBoardPos(playerId);
       const myWH = getBoardWH(playerId);
@@ -1979,6 +2082,7 @@
         ? `${playerName} (${myHand.length} ใบ)`
         : `${playerName} (${myHand.length}/${limit})`;
       drawBoardRect(pos.x, pos.y, myWH.w, myWH.h, playerColor, label);
+      drawScoreBadge(pos.x, pos.y, myWH.w, myWH.h, playerId, playerColor);
       // Draw hand dominos face-up at their local positions
       myHand.forEach((d, i) => {
         const p = getHandDominoPos(i);
@@ -2005,6 +2109,7 @@
         const isTurn = gameState.turn === pid;
         const otherWH = getBoardWH(pid);
         drawBoardRect(pos.x, pos.y, otherWH.w, otherWH.h, p.color, p.name + (isTurn ? ' ★' : '') + ` (${count})`);
+        drawScoreBadge(pos.x, pos.y, otherWH.w, otherWH.h, pid, p.color);
         // Face-down dominos — use saved positions from Firebase (rx, ry)
         const handData = allHandsData[pid] || {};
         const keys = Object.keys(handData);
@@ -2094,11 +2199,9 @@
           return;
         }
       } else {
-        // After draw phase: must place a domino before drawing again
-        // Each player should have placed at least (myCount - limit) dominos
-        // Simple check: you can only draw if you have <= limit dominos in hand
-        // (means you placed at least one since last draw)
-        if (myCount > limit && boardCount > 0) {
+        // After draw phase: must have fewer than limit to draw again
+        // (place at least 1 domino to free a slot)
+        if (myCount >= limit) {
           showToast('วาง domino ก่อนถึงจะจั่วต่อได้');
           return;
         }
