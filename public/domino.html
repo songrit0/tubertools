@@ -689,7 +689,11 @@
     });
 
     // ========== Utility ==========
-    function generateId() { return Math.random().toString(36).substr(2, 8); }
+    function generateId() {
+      const bytes = new Uint8Array(4);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
 
     function copyRoomId() {
       const id = roomId;
@@ -748,26 +752,52 @@
         const listEl = document.getElementById('room-list');
         const roomEntries = Object.entries(rooms).filter(([id, room]) => room.players);
 
+        listEl.innerHTML = '';
+        const title = document.createElement('div');
+        title.className = 'room-list-title';
         if (roomEntries.length === 0) {
-          listEl.innerHTML = '<div class="room-list-title">ยังไม่มีห้อง — สร้างห้องใหม่ได้เลย</div>';
+          title.textContent = 'ยังไม่มีห้อง — สร้างห้องใหม่ได้เลย';
+          listEl.appendChild(title);
           return;
         }
+        title.textContent = 'ห้องที่เปิดอยู่';
+        listEl.appendChild(title);
 
-        let html = '<div class="room-list-title">ห้องที่เปิดอยู่</div>';
         roomEntries.forEach(([id, room]) => {
           const playerList = room.players ? Object.values(room.players) : [];
-          const names = playerList.map(p => p.name).join(', ');
+          const names = playerList.map(p => p.name || '').join(', ');
           const count = playerList.length;
           const status = room.game?.status === 'playing' ? 'กำลังเล่น' : 'รอผู้เล่น';
-          html += `<div class="room-item" onclick="document.getElementById('input-room').value='${id}'">
-            <div>
-              <div class="room-name">${id}</div>
-              <div class="room-info">${names} (${count} คน) — ${status}</div>
-            </div>
-            <button class="room-join-btn" onclick="event.stopPropagation(); document.getElementById('input-room').value='${id}'; joinGame();">เข้าร่วม</button>
-          </div>`;
+
+          const item = document.createElement('div');
+          item.className = 'room-item';
+          item.addEventListener('click', () => {
+            document.getElementById('input-room').value = id;
+          });
+
+          const info = document.createElement('div');
+          const nameEl = document.createElement('div');
+          nameEl.className = 'room-name';
+          nameEl.textContent = id;
+          const metaEl = document.createElement('div');
+          metaEl.className = 'room-info';
+          metaEl.textContent = `${names} (${count} คน) — ${status}`;
+          info.appendChild(nameEl);
+          info.appendChild(metaEl);
+
+          const btn = document.createElement('button');
+          btn.className = 'room-join-btn';
+          btn.textContent = 'เข้าร่วม';
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('input-room').value = id;
+            joinGame();
+          });
+
+          item.appendChild(info);
+          item.appendChild(btn);
+          listEl.appendChild(item);
         });
-        listEl.innerHTML = html;
       });
     }
     loadRoomList();
@@ -920,28 +950,50 @@
     // ========== HUD ==========
     function updateHud() {
       const el = document.getElementById('hud-players');
-      let html = '';
+      el.innerHTML = '';
       for (const [pid, p] of Object.entries(players)) {
         const isTurn = gameState.turn === pid;
         const handCount = allHands[pid] || 0;
-        html += `<div class="player-item ${isTurn ? 'is-turn' : ''}">
-          <div class="player-dot" style="background:${p.color}"></div>
-          <span class="player-name">${p.name}${pid === playerId ? ' (คุณ)' : ''}</span>
-          ${gameState.status === 'playing' ? `<span class="player-hand-count">${handCount} ใบ</span>` : ''}
-          ${isTurn ? '<span class="turn-star">&#9733;</span>' : ''}
-        </div>`;
+
+        const item = document.createElement('div');
+        item.className = 'player-item' + (isTurn ? ' is-turn' : '');
+
+        const dot = document.createElement('div');
+        dot.className = 'player-dot';
+        dot.style.background = p.color || '#fff';
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'player-name';
+        nameEl.textContent = (p.name || '') + (pid === playerId ? ' (คุณ)' : '');
+
+        item.appendChild(dot);
+        item.appendChild(nameEl);
+
+        if (gameState.status === 'playing') {
+          const countEl = document.createElement('span');
+          countEl.className = 'player-hand-count';
+          countEl.textContent = `${handCount} ใบ`;
+          item.appendChild(countEl);
+        }
+        if (isTurn) {
+          const star = document.createElement('span');
+          star.className = 'turn-star';
+          star.textContent = '★';
+          item.appendChild(star);
+        }
+        el.appendChild(item);
       }
-      el.innerHTML = html;
 
       // Game info
       const infoEl = document.getElementById('hud-info');
       if (gameState.status === 'playing') {
         const boardCount = Object.keys(boardDominos).length;
-        infoEl.innerHTML = `กองจั่ว: ${gameState.drawPile || 0} ใบ &nbsp; บนบอร์ด: ${boardCount} ใบ`;
+        const pileCount = Object.keys(drawPileData).length;
+        infoEl.textContent = `กองจั่ว: ${pileCount} ใบ   บนบอร์ด: ${boardCount} ใบ`;
       } else if (gameState.status === 'finished') {
-        infoEl.innerHTML = 'เกมจบแล้ว';
+        infoEl.textContent = 'เกมจบแล้ว';
       } else {
-        infoEl.innerHTML = `ผู้เล่น ${Object.keys(players).length} คน - รอเริ่มเกม`;
+        infoEl.textContent = `ผู้เล่น ${Object.keys(players).length} คน - รอเริ่มเกม`;
       }
     }
 
@@ -984,12 +1036,17 @@
     }
 
     async function autoRestartGame() {
-      const pids = gameState.turnOrder || Object.keys(players);
+      const presentPids = Object.keys(players);
+      if (presentPids.length < 2) return;
+      // Keep old turn order for players still here, append newcomers
+      const oldOrder = gameState.turnOrder || presentPids;
+      const pids = oldOrder.filter(p => players[p]);
+      presentPids.forEach(p => { if (!pids.includes(p)) pids.push(p); });
       if (pids.length < 2) return;
       // Rotate turn order — loser (or next player) goes first
       const prevWinner = gameState.winner;
       const winnerIdx = pids.indexOf(prevWinner);
-      const nextFirst = pids[(winnerIdx + 1) % pids.length]; // loser starts next
+      const nextFirst = winnerIdx >= 0 ? pids[(winnerIdx + 1) % pids.length] : pids[0];
 
       const allDominos = generateFullSet();
       const updates = {};
@@ -1063,25 +1120,6 @@
       showToast('เกมเริ่ม! หยิบ domino จากกองจั่ว');
     }
 
-    async function drawDomino() {
-      const snap = await db.ref(`dominoRooms/${roomId}/drawPile`).once('value');
-      const pile = snap.val();
-      if (!pile) { showToast('ไม่มีโดมิโน่ให้จั่วแล้ว'); return; }
-
-      const keys = Object.keys(pile);
-      const key = keys[Math.floor(Math.random() * keys.length)];
-      const domino = pile[key];
-      const newKey = `d${Date.now()}`;
-
-      const updates = {};
-      updates[`drawPile/${key}`] = null;
-      updates[`hands/${playerId}/${newKey}`] = domino;
-      updates['game/drawPile'] = keys.length - 1;
-
-      await db.ref(`dominoRooms/${roomId}`).update(updates);
-      showToast(`จั่วได้ [${domino.a}|${domino.b}]`);
-    }
-
     async function passTurn() {
       const passCount = (gameState.passCount || 0) + 1;
       const playerCount = (gameState.turnOrder || Object.keys(players)).length;
@@ -1099,9 +1137,10 @@
     }
 
     async function advanceTurn() {
-      const order = gameState.turnOrder || Object.keys(players);
+      const order = (gameState.turnOrder || Object.keys(players)).filter(p => players[p]);
+      if (order.length === 0) return;
       const ci = order.indexOf(gameState.turn);
-      const next = order[(ci + 1) % order.length];
+      const next = ci < 0 ? order[0] : order[(ci + 1) % order.length];
       await db.ref(`dominoRooms/${roomId}/game/turn`).set(next);
     }
 
@@ -1125,12 +1164,11 @@
       return total;
     }
 
-    // Add score to player's total in Firebase
+    // Add score to player's total in Firebase (atomic)
     async function addWinScore(winnerId, score) {
-      const ref = db.ref(`dominoRooms/${roomId}/scores/${winnerId}`);
-      const snap = await ref.once('value');
-      const current = snap.val() || 0;
-      await ref.set(current + score);
+      if (!winnerId || !score) return;
+      await db.ref(`dominoRooms/${roomId}/scores/${winnerId}`)
+        .set(firebase.database.ServerValue.increment(score));
     }
 
     async function endGameBlocked() {
@@ -1300,6 +1338,7 @@
     }
 
     async function placeDomino(handIdx, side, chosenDir) {
+      if (gameState.status !== 'playing' || gameState.turn !== playerId) return;
       const domino = myHand[handIdx];
       if (!domino) return;
 
@@ -1694,15 +1733,13 @@
 
     function handleDrawPileClick(world) {
       if (gameState.status !== 'playing' || gameState.turn !== playerId) return false;
-      const count = gameState.drawPile || 0;
-      if (count <= 0) return false;
-      const cols = PILE_COLS;
-      const rows = Math.ceil(count / cols);
-      const bw = cols * (DOMINO_H + GAP) + BOARD_PAD * 2;
-      const bh = rows * (DOMINO_W + GAP) + BOARD_PAD * 2 + 20;
-      const px = DRAW_PILE_POS.x, py = DRAW_PILE_POS.y;
-      if (Math.abs(world.x - px) < bw / 2 && Math.abs(world.y - py) < bh / 2) {
-        drawDomino();
+      const pileKeys = Object.keys(drawPileData);
+      if (pileKeys.length === 0) return false;
+      const bp = getBoardPos('pile');
+      const pileWH = getBoardWH('pile');
+      if (Math.abs(world.x - bp.x) < pileWH.w / 2 && Math.abs(world.y - bp.y) < pileWH.h / 2) {
+        const randKey = pileKeys[Math.floor(Math.random() * pileKeys.length)];
+        pickFromPile(randKey);
         return true;
       }
       return false;
@@ -1953,8 +1990,6 @@
       const ly = dx * sin + dy * cos;
       return Math.abs(lx) < w / 2 && Math.abs(ly) < h / 2;
     }
-
-    function isAdmin() { return playerName.endsWith('-'); }
 
     // ========== Board Rendering ==========
     // FIXED world positions — same for everyone, camera rotation handles perspective
@@ -2246,17 +2281,11 @@
       const bp = getBoardPos('pile');
       const pileWH = getBoardWH('pile');
       drawBoardRect(bp.x, bp.y, pileWH.w, pileWH.h, '#ffd700', `กองจั่ว (${count})`, true);
-      // Draw dominos — admin sees face-up, others face-down
-      const showFaceUp = isAdmin();
       pileKeys.forEach((key, i) => {
         const d = drawPileData[key];
         const wx = bp.x + (d.rx || 0);
         const wy = bp.y + (d.ry || 0);
-        if (showFaceUp) {
-          drawDominoTile(wx, wy, d.a, d.b, 1, null, 0);
-        } else {
-          drawFaceDownDomino(wx, wy, 1, 0);
-        }
+        drawFaceDownDomino(wx, wy, 1, 0);
       });
       // Buttons on pile board
       const btnY = bp.y + pileWH.h / 2 - 25;
@@ -2292,37 +2321,42 @@
     }
 
     async function pickFromPile(key) {
-      const domino = drawPileData[key];
-      if (!domino) { showToast('ไม่พบ domino'); return; }
       const limit = gameState.drawLimit || 7;
       const myCount = allHands[playerId] || 0;
-      const boardCount = Object.keys(boardDominos).length;
 
-      if (!isDrawPhaseOver()) {
-        // Draw phase: limit per player
-        if (myCount >= limit) {
-          showToast(`รอผู้เล่นอื่นจั่วให้ครบ ${limit} ใบก่อน`);
-          return;
-        }
-      } else {
-        // After draw phase: must have fewer than limit to draw again
-        // (place at least 1 domino to free a slot)
-        if (myCount >= limit) {
-          showToast('วาง domino ก่อนถึงจะจั่วต่อได้');
-          return;
-        }
+      if (myCount >= limit) {
+        showToast(isDrawPhaseOver()
+          ? 'วาง domino ก่อนถึงจะจั่วต่อได้'
+          : `รอผู้เล่นอื่นจั่วให้ครบ ${limit} ใบก่อน`);
+        return;
+      }
+
+      // Atomically claim the pile domino (prevents double-pick race)
+      let claimed = null;
+      const pileRef = db.ref(`dominoRooms/${roomId}/drawPile/${key}`);
+      const result = await pileRef.transaction(cur => {
+        if (cur === null || cur === undefined) return;
+        claimed = cur;
+        return null;
+      });
+
+      if (!result.committed || !claimed) {
+        showToast('โดมิโน่นี้ถูกหยิบไปแล้ว');
+        return;
       }
 
       const newKey = `d${Date.now()}`;
-      const updates = {};
-      updates[`drawPile/${key}`] = null;
-      updates[`hands/${playerId}/${newKey}`] = { a: domino.a, b: domino.b };
-      updates['game/drawPile'] = Math.max(0, (gameState.drawPile || 0) - 1);
-      await db.ref(`dominoRooms/${roomId}`).update(updates);
+      await db.ref(`dominoRooms/${roomId}/hands/${playerId}/${newKey}`)
+        .set({ a: claimed.a, b: claimed.b });
+      // Re-sync counter from actual pile size (fixes any prior drift)
+      const pileSnap = await db.ref(`dominoRooms/${roomId}/drawPile`).once('value');
+      const pileCount = pileSnap.val() ? Object.keys(pileSnap.val()).length : 0;
+      await db.ref(`dominoRooms/${roomId}/game/drawPile`).set(pileCount);
+
       if (!isDrawPhaseOver()) {
-        showToast(`หยิบได้ [${domino.a}|${domino.b}] (${myCount + 1}/${limit})`);
+        showToast(`หยิบได้ [${claimed.a}|${claimed.b}] (${myCount + 1}/${limit})`);
       } else {
-        showToast(`หยิบได้ [${domino.a}|${domino.b}]`);
+        showToast(`หยิบได้ [${claimed.a}|${claimed.b}]`);
       }
     }
 

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>กล่องข้อความ - VTuber Tools</title>
+  <meta name="description" content="หน้าจอแสดงกล่องข้อความ VTuber แบบเรียลไทม์">
+  <link rel="icon" href="/assets/assetslogo.png">
+  <style>
+    @font-face {
+      font-family: '9LP-BOLD';
+      src: url('/fonts/9LP-BOLD.OTF') format('opentype');
+      font-weight: bold;
+      font-display: swap;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: '9LP-BOLD', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .text-boxes-container {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 0;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      border: 3px solid #1a1a2e;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .text-boxes-container.visible {
+      opacity: 1;
+    }
+
+    .text-box-item {
+      padding: 14px 32px;
+      color: #fff;
+      font-size: 34px;
+      font-weight: bold;
+      font-family: '9LP-BOLD', sans-serif;
+      white-space: nowrap;
+      text-shadow: 1px 2px 3px rgba(0, 0, 0, 0.6);
+      border-right: 3px solid #1a1a2e;
+      transition: background-color 0.3s ease;
+    }
+
+    .text-box-item:last-child {
+      border-right: none;
+    }
+
+    .text-box-item {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .text-box-item:active {
+      filter: brightness(0.8);
+    }
+
+    .waiting {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .waiting.hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="waiting" id="waiting">Waiting for text boxes...</div>
+  <div class="text-boxes-container" id="textBoxes"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC95K5rmqsZbmPmSDvgGeWgqbQvOll4X60",
+      authDomain: "tuber-tools-266cb.firebaseapp.com",
+      databaseURL: "https://tuber-tools-266cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tuber-tools-266cb",
+      storageBucket: "tuber-tools-266cb.firebasestorage.app",
+      messagingSenderId: "519614170930",
+      appId: "1:519614170930:web:243813c3bcba9df196b92b",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const textBoxesEl = document.getElementById('textBoxes');
+    const waitingEl = document.getElementById('waiting');
+    let currentData = [];
+
+    function toggleSelected(boxId) {
+      const updated = currentData.map(box =>
+        box && box.id === boxId ? { ...box, selected: !box.selected } : box
+      );
+      db.ref('textBoxes').set(updated);
+    }
+
+    db.ref('textBoxes').on('value', (snapshot) => {
+      const data = snapshot.val();
+      currentData = data || [];
+      textBoxesEl.innerHTML = '';
+
+      if (data && Array.isArray(data)) {
+        const visibleBoxes = data.filter(box => box && box.visible);
+        if (visibleBoxes.length > 0) {
+          waitingEl.classList.add('hidden');
+          visibleBoxes.forEach((box) => {
+            const el = document.createElement('div');
+            el.className = 'text-box-item';
+            el.style.backgroundColor = box.selected
+              ? (box.selectedColor || '#FFD700')
+              : (box.color || '#C0392B');
+            el.textContent = box.text;
+            el.addEventListener('click', () => toggleSelected(box.id));
+            textBoxesEl.appendChild(el);
+          });
+          textBoxesEl.classList.add('visible');
+        } else {
+          textBoxesEl.classList.remove('visible');
+          waitingEl.classList.remove('hidden');
+        }
+      } else {
+        textBoxesEl.classList.remove('visible');
+        waitingEl.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, Pressable,
+  View, Text, StyleSheet, FlatList, Pressable, TextInput,
   ActivityIndicator, SafeAreaView, Image, ScrollView,
 } from 'react-native';
-import { ChevronLeft, Trash2, RefreshCw, X, Eye, Monitor } from 'lucide-react-native';
+import { ChevronLeft, Trash2, RefreshCw, X, Eye, Monitor, Plus, MessageSquare, Check, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
 import { vtuberData } from '../data/vtuberData';
-import { fetchUserSelections, deleteAllUserSelections, subscribeToUserSelections, subscribeToVtubersInUse, removeCharacterInUse, subscribeToVtubers, setActivePreview } from '../services/vtuberDatabaseService';
+import { fetchUserSelections, deleteAllUserSelections, subscribeToUserSelections, subscribeToVtubersInUse, removeCharacterInUse, subscribeToVtubers, setActivePreview, saveTextBoxes, subscribeToTextBoxes } from '../services/vtuberDatabaseService';
 
 
 export default function SelectionLogScreen({ navigation }) {
@@ -18,7 +18,25 @@ export default function SelectionLogScreen({ navigation }) {
   const [vtubersInUse, setVtubersInUse] = useState([]);
   const [isRemovingAll, setIsRemovingAll] = useState(false);
   const [vtubers, setVtubers] = useState([]);
+  const [textBoxes, setTextBoxes] = useState([]);
+  const [newBoxText, setNewBoxText] = useState('');
+  const [newBoxColor, setNewBoxColor] = useState('#C0392B');
+  const [newBoxSelectedColor, setNewBoxSelectedColor] = useState('#FFD700');
+  const [newBoxGroup, setNewBoxGroup] = useState('A');
+  const [activeGroup, setActiveGroup] = useState('A');
 
+  const TEXT_BOX_GROUPS = ['A', 'B', 'C', 'D', 'E'];
+
+  const TEXT_BOX_COLORS = [
+    { label: 'แดง', value: '#C0392B' },
+    { label: 'น้ำเงิน', value: '#2980B9' },
+    { label: 'เขียว', value: '#27AE60' },
+    { label: 'ม่วง', value: '#8E44AD' },
+    { label: 'เทา', value: '#555555' },
+    { label: 'ส้ม', value: '#E67E22' },
+    { label: 'ทอง', value: '#FFD700' },
+    { label: 'ชมพู', value: '#E91E63' },
+  ];
 
   const isWide = responsive.width >= 768;
 
@@ -47,11 +65,15 @@ export default function SelectionLogScreen({ navigation }) {
     const unsubscribeVtubers = subscribeToVtubers((data) => {
       setVtubers(data);
     });
+    const unsubscribeTextBoxes = subscribeToTextBoxes((data) => {
+      setTextBoxes(Array.isArray(data) ? data : []);
+    });
     loadSelections();
     return () => {
       unsubscribeSelections();
       unsubscribeInUse();
       unsubscribeVtubers();
+      unsubscribeTextBoxes();
     };
   }, []);
 
@@ -127,6 +149,70 @@ export default function SelectionLogScreen({ navigation }) {
     }
   };
 
+  const handleAddTextBox = async () => {
+    if (!newBoxText.trim()) return;
+    const updated = [...textBoxes, {
+      id: Date.now().toString(),
+      text: newBoxText.trim(),
+      group: newBoxGroup,
+      visible: false,
+      selected: false,
+    }];
+    await saveTextBoxes(updated);
+    setNewBoxText('');
+  };
+
+  const handleMoveTextBox = async (index, direction) => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= textBoxes.length) return;
+    const updated = [...textBoxes];
+    [updated[index], updated[targetIndex]] = [updated[targetIndex], updated[index]];
+    await saveTextBoxes(updated);
+  };
+
+  const handleShowGroup = async (group) => {
+    setActiveGroup(group);
+    setNewBoxGroup(group);
+    const updated = textBoxes.map(box => ({
+      ...box,
+      visible: box.group === group,
+    }));
+    await saveTextBoxes(updated);
+  };
+
+  const handleApplyColors = async () => {
+    const updated = textBoxes.map(box => ({
+      ...box,
+      color: newBoxColor,
+      selectedColor: newBoxSelectedColor,
+    }));
+    await saveTextBoxes(updated);
+  };
+
+  const handleToggleTextBox = async (id) => {
+    const updated = textBoxes.map(box =>
+      box.id === id ? { ...box, visible: !box.visible } : box
+    );
+    await saveTextBoxes(updated);
+  };
+
+  const handleRemoveTextBox = async (id) => {
+    const updated = textBoxes.filter(box => box.id !== id);
+    await saveTextBoxes(updated);
+  };
+
+  const handleShowAllTextBoxes = async (show) => {
+    const updated = textBoxes.map(box => ({ ...box, visible: show }));
+    await saveTextBoxes(updated);
+  };
+
+  const handleSelectTextBox = async (id) => {
+    const updated = textBoxes.map(box =>
+      box.id === id ? { ...box, selected: !box.selected } : box
+    );
+    await saveTextBoxes(updated);
+  };
+
   const formatTime = (timestamp) => {
     try {
       return new Date(timestamp).toLocaleString('th-TH', {
@@ -141,7 +227,7 @@ export default function SelectionLogScreen({ navigation }) {
   // Medal colors for top 3
   const medalColor = ['#FFD700', '#C0C0C0', '#CD7F32'];
 
-  const RankingPanel = () => (
+  const rankingPanel = (
     <View style={[styles.panel, styles.rankingPanel]}>
       <Text style={styles.panelTitle}>อันดับ VTuber</Text>
       <Text style={styles.panelSubtitle}>เรียงจากที่ถูกเลือกมากที่สุด</Text>
@@ -242,7 +328,7 @@ export default function SelectionLogScreen({ navigation }) {
     </View>
   );
 
-  const LogPanel = () => (
+  const logPanel = (
     <View style={[styles.panel, styles.logPanel]}>
       {/* Log header row */}
       <View style={styles.logHeaderRow}>
@@ -301,6 +387,175 @@ export default function SelectionLogScreen({ navigation }) {
     </View>
   );
 
+  const textBoxPanel = (
+    <View style={[styles.panel, { borderTopWidth: 1, borderTopColor: '#2A2A2A' }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <MessageSquare size={16} color={Colors.accent} />
+          <Text style={styles.panelTitle}>กล่องข้อความ</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <Pressable
+            style={({ pressed }) => [styles.tbShowAllBtn, { backgroundColor: '#27AE60' }, pressed && { opacity: 0.7 }]}
+            onPress={() => handleShowAllTextBoxes(true)}
+          >
+            <Text style={styles.tbShowAllBtnText}>แสดงทั้งหมด</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.tbShowAllBtn, { backgroundColor: '#555' }, pressed && { opacity: 0.7 }]}
+            onPress={() => handleShowAllTextBoxes(false)}
+          >
+            <Text style={styles.tbShowAllBtnText}>ซ่อนทั้งหมด</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Color settings */}
+      <View style={styles.tbSettingsBox}>
+        <View style={styles.tbColorRow}>
+          <Text style={styles.tbColorLabel}>สีปกติ</Text>
+          <View style={styles.tbColorPicker}>
+            {TEXT_BOX_COLORS.map(c => (
+              <Pressable
+                key={c.value}
+                style={[
+                  styles.tbColorDot,
+                  { backgroundColor: c.value },
+                  newBoxColor === c.value && styles.tbColorDotActive,
+                ]}
+                onPress={() => setNewBoxColor(c.value)}
+              />
+            ))}
+          </View>
+        </View>
+        <View style={styles.tbColorRow}>
+          <Text style={styles.tbColorLabel}>สีเลือก</Text>
+          <View style={styles.tbColorPicker}>
+            {TEXT_BOX_COLORS.map(c => (
+              <Pressable
+                key={c.value}
+                style={[
+                  styles.tbColorDot,
+                  { backgroundColor: c.value },
+                  newBoxSelectedColor === c.value && styles.tbColorDotActive,
+                ]}
+                onPress={() => setNewBoxSelectedColor(c.value)}
+              />
+            ))}
+          </View>
+        </View>
+        <Pressable
+          style={({ pressed }) => [styles.tbApplyBtn, pressed && { opacity: 0.7 }]}
+          onPress={handleApplyColors}
+        >
+          <Text style={styles.tbApplyBtnText}>ใช้สีกับทุกกล่อง</Text>
+        </Pressable>
+      </View>
+
+      {/* Group tabs - แสดงกลุ่ม */}
+      <View style={styles.tbGroupSection}>
+        <Text style={styles.tbColorLabel}>กลุ่ม</Text>
+        <View style={styles.tbGroupTabs}>
+          {TEXT_BOX_GROUPS.map(g => (
+            <Pressable
+              key={g}
+              style={[styles.tbGroupTab, activeGroup === g && styles.tbGroupTabActive]}
+              onPress={() => handleShowGroup(g)}
+            >
+              <Text style={[styles.tbGroupTabText, activeGroup === g && styles.tbGroupTabTextActive]}>{g}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* Add new text box */}
+      <View style={[styles.tbAddRow, { marginTop: 8 }]}>
+        <Pressable
+          style={[styles.tbGroupBadge, { backgroundColor: '#333' }]}
+          onPress={() => {
+            const i = TEXT_BOX_GROUPS.indexOf(newBoxGroup);
+            setNewBoxGroup(TEXT_BOX_GROUPS[(i + 1) % TEXT_BOX_GROUPS.length]);
+          }}
+        >
+          <Text style={styles.tbGroupBadgeText}>{newBoxGroup}</Text>
+        </Pressable>
+        <TextInput
+          style={styles.tbInput}
+          value={newBoxText}
+          onChangeText={setNewBoxText}
+          placeholder="พิมพ์ข้อความ..."
+          placeholderTextColor="#666"
+          onSubmitEditing={handleAddTextBox}
+        />
+        <Pressable
+          style={({ pressed }) => [styles.tbAddBtn, pressed && { opacity: 0.7 }]}
+          onPress={handleAddTextBox}
+        >
+          <Plus size={16} color="#fff" />
+        </Pressable>
+      </View>
+
+      {/* Text box list */}
+      {textBoxes.length === 0 ? (
+        <Text style={[styles.emptySubtitle, { marginTop: 12 }]}>ยังไม่มีกล่องข้อความ</Text>
+      ) : (
+        <View style={{ marginTop: 8, gap: 4 }}>
+          {textBoxes.map((box, index) => (
+            <View key={box.id} style={[styles.tbItem, { borderLeftColor: box.selected ? (box.selectedColor || newBoxSelectedColor) : (box.color || newBoxColor) }]}>
+              <View style={styles.tbMoveCol}>
+                <Pressable
+                  style={({ pressed }) => [styles.tbMoveBtn, pressed && { opacity: 0.5 }, index === 0 && { opacity: 0.2 }]}
+                  onPress={() => handleMoveTextBox(index, 'up')}
+                  disabled={index === 0}
+                >
+                  <ChevronUp size={10} color="#fff" />
+                </Pressable>
+                <Text style={styles.tbIndex}>{index + 1}</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.tbMoveBtn, pressed && { opacity: 0.5 }, index === textBoxes.length - 1 && { opacity: 0.2 }]}
+                  onPress={() => handleMoveTextBox(index, 'down')}
+                  disabled={index === textBoxes.length - 1}
+                >
+                  <ChevronDown size={10} color="#fff" />
+                </Pressable>
+              </View>
+              <Text style={[styles.tbGroupBadgeSmall, { backgroundColor: '#333' }]}>{box.group || 'A'}</Text>
+              <View style={[styles.tbPreviewBox, { backgroundColor: box.selected ? (box.selectedColor || newBoxSelectedColor) : (box.color || newBoxColor) }]}>
+                <Text style={styles.tbPreviewText}>{box.text}</Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.tbSelectBtn,
+                  box.selected ? { backgroundColor: box.selectedColor || newBoxSelectedColor } : styles.tbSelectOff,
+                  pressed && { opacity: 0.7 },
+                ]}
+                onPress={() => handleSelectTextBox(box.id)}
+              >
+                <Check size={12} color="#fff" />
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.tbToggleBtn,
+                  box.visible ? styles.tbToggleOn : styles.tbToggleOff,
+                  pressed && { opacity: 0.7 },
+                ]}
+                onPress={() => handleToggleTextBox(box.id)}
+              >
+                <Eye size={14} color="#fff" />
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.removeBtn, pressed && { opacity: 0.6 }]}
+                onPress={() => handleRemoveTextBox(box.id)}
+              >
+                <X size={14} color="#fff" />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Navbar */}
@@ -351,14 +606,18 @@ export default function SelectionLogScreen({ navigation }) {
       {isWide ? (
         // Wide: side by side
         <View style={styles.bodyWide}>
-          <RankingPanel />
-          <LogPanel />
+          <ScrollView style={{ width: 280, borderRightWidth: 1, borderRightColor: '#2A2A2A' }}>
+            {rankingPanel}
+            {textBoxPanel}
+          </ScrollView>
+          {logPanel}
         </View>
       ) : (
-        // Narrow: stacked, ranking on top as horizontal scroll
+        // Narrow: stacked
         <ScrollView style={{ flex: 1 }}>
-          <RankingPanel />
-          <LogPanel />
+          {rankingPanel}
+          {textBoxPanel}
+          {logPanel}
         </ScrollView>
       )}
 
@@ -467,9 +726,6 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   rankingPanel: {
-    width: 280,
-    borderRightWidth: 1,
-    borderRightColor: '#2A2A2A',
   },
   logPanel: {
     flex: 1,
@@ -679,5 +935,203 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 4,
+  },
+
+  // Text box styles
+  tbAddRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tbInput: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+    color: '#fff',
+    fontSize: 13,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  tbColorPicker: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  tbColorDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  tbColorDotActive: {
+    borderColor: '#fff',
+  },
+  tbAddBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: Colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tbItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 6,
+    padding: 6,
+    borderLeftWidth: 3,
+  },
+  tbPreviewBox: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  tbPreviewText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  tbToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  tbToggleOn: {
+    backgroundColor: '#27AE60',
+  },
+  tbToggleOff: {
+    backgroundColor: '#555',
+  },
+  tbToggleBtnText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  tbShowAllBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  tbShowAllBtnText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  tbMoveCol: {
+    alignItems: 'center',
+    gap: 1,
+  },
+  tbMoveBtn: {
+    padding: 2,
+  },
+  tbIndex: {
+    color: Colors.textSecondary,
+    fontSize: 9,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  tbSelectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  tbSelectOff: {
+    backgroundColor: '#333',
+  },
+  tbSelectBtnText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  tbColorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tbColorLabel: {
+    color: Colors.textSecondary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    width: 40,
+  },
+  tbSettingsBox: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 6,
+    padding: 8,
+    gap: 6,
+  },
+  tbApplyBtn: {
+    backgroundColor: Colors.accent,
+    borderRadius: 4,
+    paddingVertical: 6,
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  tbApplyBtnText: {
+    color: '#000',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  tbGroupSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  tbGroupTabs: {
+    flexDirection: 'row',
+    gap: 4,
+    flex: 1,
+  },
+  tbGroupTab: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 4,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+  },
+  tbGroupTabActive: {
+    backgroundColor: Colors.accent,
+  },
+  tbGroupTabText: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  tbGroupTabTextActive: {
+    color: '#000',
+  },
+  tbGroupBadge: {
+    width: 28,
+    height: 32,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tbGroupBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  tbGroupBadgeSmall: {
+    color: '#aaa',
+    fontSize: 9,
+    fontWeight: 'bold',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 3,
+    textAlign: 'center',
+    overflow: 'hidden',
   },
 });

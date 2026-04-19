@@ -345,3 +345,61 @@ export const subscribeToActivePreview = (callback) => {
 
   return () => off(dbRef, 'value', listener);
 };
+
+// Text Boxes Functions (กล่องข้อความแสดงบนหน้าจอ)
+const TEXT_BOXES_PATH = 'textBoxes';
+
+export const saveTextBoxes = async (textBoxes) => {
+  try {
+    const dbRef = ref(realtimeDb, TEXT_BOXES_PATH);
+    await set(dbRef, textBoxes);
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving text boxes:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const subscribeToTextBoxes = (callback) => {
+  const dbRef = ref(realtimeDb, TEXT_BOXES_PATH);
+  const listener = onValue(dbRef, (snapshot) => {
+    if (snapshot.exists()) {
+      callback(snapshot.val());
+    } else {
+      callback([]);
+    }
+  }, (error) => {
+    console.error('Error subscribing to text boxes:', error);
+  });
+
+  return () => off(dbRef, 'value', listener);
+};
+
+// Text Boxes Config (ตำแหน่งและการตั้งค่า)
+const TEXT_BOXES_CONFIG_PATH = 'textBoxesConfig';
+
+export const saveTextBoxesConfig = async (config) => {
+  try {
+    const dbRef = ref(realtimeDb, TEXT_BOXES_CONFIG_PATH);
+    await set(dbRef, config);
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving text boxes config:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const subscribeToTextBoxesConfig = (callback) => {
+  const dbRef = ref(realtimeDb, TEXT_BOXES_CONFIG_PATH);
+  const listener = onValue(dbRef, (snapshot) => {
+    if (snapshot.exists()) {
+      callback(snapshot.val());
+    } else {
+      callback({ bottom: 40, left: 50 });
+    }
+  }, (error) => {
+    console.error('Error subscribing to text boxes config:', error);
+  });
+
+  return () => off(dbRef, 'value', listener);
+};
