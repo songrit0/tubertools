@@ -12,6 +12,10 @@
         "destination": "/domino.html"
       },
       {
+        "source": "/textbox-preview",
+        "destination": "/textbox-preview.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
