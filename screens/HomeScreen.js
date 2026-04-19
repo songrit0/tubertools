@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity } from 'react-native';
-import { Settings, User, Database } from 'lucide-react-native';
+import { Settings, User, Database, LogOut } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
+import { useAuth } from '../contexts/AuthContext';
 
 const GAMES = Array.from({ length: 12 }, (_, i) => ({
     id: `GAME_${i + 1}`,
@@ -11,6 +12,11 @@ const GAMES = Array.from({ length: 12 }, (_, i) => ({
 
 export default function HomeScreen({ navigation }) {
     const responsive = useResponsive();
+    const { user, signOut } = useAuth();
+
+    const displayName = user?.isAnonymous
+        ? 'Guest'
+        : user?.email?.split('@')[0] || user?.displayName || 'User';
     const renderGameItem = ({ item }) => (
         <TouchableOpacity
             style={styles.gameCard}
@@ -28,7 +34,7 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.header}>
                 <View style={styles.profileBadge}>
                     <User color={Colors.text} size={24} />
-                    <Text style={styles.profileName}>USERNAME</Text>
+                    <Text style={styles.profileName}>{displayName}</Text>
                 </View>
                 <View style={styles.iconContainer}>
                     <TouchableOpacity onPress={() => navigation.navigate('AdminData')}>
@@ -36,6 +42,9 @@ export default function HomeScreen({ navigation }) {
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => navigation.navigate('SelectionLog')}>
                         <Settings color={Colors.text} size={24} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={signOut}>
+                        <LogOut color={Colors.eliminated} size={24} />
                     </TouchableOpacity>
                 </View>
             </View>

@@ -10,9 +10,10 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import { Settings, Database } from 'lucide-react-native';
+import { Settings, Database, LogOut } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
+import { useAuth } from '../contexts/AuthContext';
 
 const GAMES = [
   {
@@ -47,6 +48,7 @@ const GAMES = [
 export default function SelectGameScreen({ navigation }) {
   const responsive = useResponsive();
   const isWide = responsive.width >= 768;
+  const { signOut } = useAuth();
 
   const renderGame = ({ item }) => (
     <Pressable
@@ -108,6 +110,10 @@ export default function SelectGameScreen({ navigation }) {
             <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('SelectionLog')}>
               <Settings color={Colors.textSecondary} size={18} />
               {isWide && <Text style={styles.navBtnText}>Log</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.navBtn, styles.logoutBtn]} onPress={signOut}>
+              <LogOut color="#FF4444" size={18} />
+              {isWide && <Text style={styles.logoutBtnText}>Logout</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -174,6 +180,15 @@ const styles = StyleSheet.create({
   },
   navBtnText: {
     color: Colors.textSecondary,
+    fontSize: 13,
+  },
+  logoutBtn: {
+    borderWidth: 1,
+    borderColor: '#FF444440',
+    backgroundColor: '#FF444415',
+  },
+  logoutBtnText: {
+    color: '#FF4444',
     fontSize: 13,
   },
   // Content
