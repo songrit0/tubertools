@@ -1,6 +1,10 @@
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  updateProfile,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   signOut,
   signInAnonymously,
   GoogleAuthProvider,
@@ -21,6 +25,26 @@ export const loginWithEmail = (email, password) => {
 // Email/Password Register
 export const registerWithEmail = (email, password) => {
   return createUserWithEmailAndPassword(auth, email, password);
+};
+
+// Update display name
+export const updateUserDisplayName = (displayName) => {
+  if (!auth.currentUser) throw new Error('No user logged in');
+  return updateProfile(auth.currentUser, { displayName });
+};
+
+// Update photo URL
+export const updateUserPhoto = (photoURL) => {
+  if (!auth.currentUser) throw new Error('No user logged in');
+  return updateProfile(auth.currentUser, { photoURL: photoURL || null });
+};
+
+// Change password (requires reauthentication)
+export const changePassword = async (currentPassword, newPassword) => {
+  if (!auth.currentUser) throw new Error('No user logged in');
+  const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+  await reauthenticateWithCredential(auth.currentUser, credential);
+  return updatePassword(auth.currentUser, newPassword);
 };
 
 // Email Link (Passwordless) Sign In

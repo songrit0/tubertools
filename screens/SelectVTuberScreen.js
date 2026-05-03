@@ -6,18 +6,11 @@ import {
 import { ChevronLeft, X, Check } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
+import { getNumColumns } from '../theme/responsive';
+import { shuffleArray } from '../utils/arrayUtils';
 import { fetchVtubersFromDatabase, saveUserSelection, fetchUserSelections, removeCharacterInUse, subscribeToVtubersInUse } from '../services/vtuberDatabaseService';
 
 const MainLogo = require('../assets/assetslogo.png');
-
-const shuffleArray = (arr) => {
-  const shuffled = [...arr];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-};
 
 let cachedVtubers = null;
 
@@ -32,27 +25,19 @@ export default function SelectVTuberScreen({ route, navigation }) {
   const [selectedVTuberIds, setSelectedVTuberIds] = useState(new Set());
   const [vtubersInUse, setVtubersInUse] = useState([]);
 
-  const numColumns = responsive.width >= 1200 ? 6
-    : responsive.width >= 900 ? 5
-      : responsive.width >= 600 ? 4
-        : 3;
+  const numColumns = getNumColumns(responsive.width);
 
   useEffect(() => {
     // Check if vtubersInUse collection is empty and if character is locked
     const unsubscribe = subscribeToVtubersInUse((inUseIds) => {
       setVtubersInUse(inUseIds);
-      console.log('👁️ VTubersInUse:', inUseIds);
 
-      // If vtubersInUse is empty/null, redirect to SelectGame
       if (!inUseIds || inUseIds.length === 0) {
-        console.log('⚠️ vtubersInUse is empty, redirecting to SelectGame');
         navigation.navigate('SelectGame');
         return;
       }
 
-      // If character is not in vtubersInUse, redirect to SelectGame
       if (character?.id && !inUseIds.includes(character.id)) {
-        console.log('❌ Character not found in vtubersInUse:', character.id, 'redirecting to SelectGame');
         navigation.navigate('SelectGame');
         return;
       }
@@ -165,9 +150,7 @@ export default function SelectVTuberScreen({ route, navigation }) {
           <Pressable
             style={styles.backBtn}
             onPress={async () => {
-              // Remove character from vtubersInUse and navigate back
               if (character?.id) {
-                console.log('🗑️ Removing character from vtubersInUse:', character.id);
                 await removeCharacterInUse(character.id);
               }
               navigation.navigate('SelectGame');

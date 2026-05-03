@@ -67,8 +67,8 @@ export default function MonopolyLobbyScreen({ navigation }) {
     try {
       const rooms = await getOpenRooms();
       setOpenRooms(rooms);
-    } catch (e) {
-      console.log('Error fetching rooms:', e);
+    } catch {
+      setOpenRooms([]);
     }
     setRefreshing(false);
   }, []);

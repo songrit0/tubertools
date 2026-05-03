@@ -62,7 +62,6 @@ export default function MonopolyGameScreen({ route, navigation }) {
             const newPos = Number(p.position);
 
             if (oldPos !== undefined && oldPos !== newPos && p.status !== 'bankrupt') {
-              console.log(`[ANIM-DETECT] 🔥 ${p.name}: ${oldPos} -> ${newPos}`);
               animData = { id: pid, color: p.color, from: oldPos, to: newPos };
               shouldAnimate = true;
               break;
@@ -84,7 +83,6 @@ export default function MonopolyGameScreen({ route, navigation }) {
       }
 
       if (shouldAnimate && animData) {
-        console.log(`[ANIM-EXEC] 🚀 STARTING ANIMATION...`, animData);
         isAnimatingRef.current = true;
         pendingRoomRef.current = data;
 

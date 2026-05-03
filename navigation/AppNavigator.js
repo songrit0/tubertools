@@ -19,6 +19,8 @@ import SelectionLowerThirdScreen from '../screens/SelectionLowerThirdScreen';
 import MonopolyLobbyScreen from '../screens/monopoly/MonopolyLobbyScreen';
 import MonopolyGameScreen from '../screens/monopoly/MonopolyGameScreen';
 import MonopolyResultScreen from '../screens/monopoly/MonopolyResultScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import AdminUsersScreen from '../screens/AdminUsersScreen';
 
 const Stack = createStackNavigator();
 
@@ -58,6 +60,8 @@ function AppStack() {
       <Stack.Screen name="MonopolyLobby" component={MonopolyLobbyScreen} />
       <Stack.Screen name="MonopolyGame" component={MonopolyGameScreen} />
       <Stack.Screen name="MonopolyResult" component={MonopolyResultScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
     </Stack.Navigator>
   );
 }

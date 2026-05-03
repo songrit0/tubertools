@@ -3,23 +3,18 @@ import {
   View, Text, StyleSheet, FlatList, Pressable,
   Image, ActivityIndicator, SafeAreaView,
 } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, List, Database } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
+import { getNumColumns } from '../theme/responsive';
+import { shuffleArray } from '../utils/arrayUtils';
 import SelectionModal from '../components/SelectionModal';
 import { subscribeToVtubers, addCharacterInUse, subscribeToVtubersInUse } from '../services/vtuberDatabaseService';
-
-const shuffleArray = (arr) => {
-  const shuffled = [...arr];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-};
+import { useAuth } from '../contexts/AuthContext';
 
 export default function VTuberSelectionScreen({ route, navigation }) {
   const responsive = useResponsive();
+  const { isAdmin } = useAuth();
   const { gameId } = route.params || {};
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -28,10 +23,7 @@ export default function VTuberSelectionScreen({ route, navigation }) {
   const [vtubersInUse, setVtubersInUse] = useState([]);
   const orderRef = useRef(null);
 
-  const numColumns = responsive.width >= 1200 ? 6
-    : responsive.width >= 900 ? 5
-    : responsive.width >= 600 ? 4
-    : 3;
+  const numColumns = getNumColumns(responsive.width);
 
   useEffect(() => {
     // Real-time listener for characters
@@ -49,10 +41,8 @@ export default function VTuberSelectionScreen({ route, navigation }) {
       setIsLoading(false);
     });
 
-    // Real-time listener for characters in use
     const unsubscribeInUse = subscribeToVtubersInUse((inUseIds) => {
       setVtubersInUse(inUseIds);
-      console.log('👁️ Characters in use:', inUseIds);
     });
 
     return () => {
@@ -62,18 +52,13 @@ export default function VTuberSelectionScreen({ route, navigation }) {
   }, []);
 
   const handleSelect = (character) => {
-    console.log('📍 handleSelect:', character.name, '| In use:', vtubersInUse);
-    if (vtubersInUse.includes(character.id)) {
-      console.log('❌ Character already in use:', character.name);
-      return;
-    }
+    if (vtubersInUse.includes(character.id)) return;
     setSelectedCharacter(character);
     setModalVisible(true);
   };
 
   const confirmSelection = () => {
     if (selectedCharacter?.id) {
-      console.log('✅ Confirming character:', selectedCharacter.id);
       addCharacterInUse(selectedCharacter.id);
     }
     setModalVisible(false);
@@ -121,7 +106,16 @@ export default function VTuberSelectionScreen({ route, navigation }) {
             <Text style={styles.backText}>กลับ</Text>
           </Pressable>
           <Text style={styles.navTitle}>WHO ARE YOU?</Text>
-          <View style={{ width: 70 }} />
+          {isAdmin && (
+            <View style={styles.navBtns}>
+              <Pressable style={styles.logBtn} onPress={() => navigation.navigate('AdminData')}>
+                <Database color={Colors.textSecondary} size={18} />
+              </Pressable>
+              <Pressable style={styles.logBtn} onPress={() => navigation.navigate('SelectionLog')}>
+                <List color={Colors.textSecondary} size={18} />
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
 
@@ -192,6 +186,18 @@ const styles = StyleSheet.create({
   backText: {
     color: Colors.text,
     fontSize: 13,
+  },
+  navBtns: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  logBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#242424',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   navTitle: {
     color: Colors.text,

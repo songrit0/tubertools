@@ -9,11 +9,23 @@ import {
   Pressable,
   Linking,
   Platform,
+  Image,
 } from 'react-native';
-import { Settings, Database, LogOut } from 'lucide-react-native';
+import { LogOut, Users } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useResponsive } from '../hooks/useResponsive';
 import { useAuth } from '../contexts/AuthContext';
+
+const AVATAR_COLORS = [
+  '#E74C3C', '#E67E22', '#F1C40F', '#2ECC71',
+  '#1ABC9C', '#3498DB', '#9B59B6', '#E91E63',
+];
+
+function getAvatarColor(email) {
+  let hash = 0;
+  for (let i = 0; i < (email || '').length; i++) hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 const GAMES = [
   {
@@ -48,7 +60,11 @@ const GAMES = [
 export default function SelectGameScreen({ navigation }) {
   const responsive = useResponsive();
   const isWide = responsive.width >= 768;
-  const { signOut } = useAuth();
+  const { signOut, user, isAdmin } = useAuth();
+
+  const email = user?.email || '';
+  const initial = (user?.displayName || email || '?')[0].toUpperCase();
+  const avatarColor = getAvatarColor(email);
 
   const renderGame = ({ item }) => (
     <Pressable
@@ -103,13 +119,20 @@ export default function SelectGameScreen({ navigation }) {
         <View style={styles.navInner}>
           <Text style={styles.navLogo}>tuber-tools</Text>
           <View style={styles.navActions}>
-            <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('AdminData')}>
-              <Database color={Colors.textSecondary} size={18} />
-              {isWide && <Text style={styles.navBtnText}>Admin</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('SelectionLog')}>
-              <Settings color={Colors.textSecondary} size={18} />
-              {isWide && <Text style={styles.navBtnText}>Log</Text>}
+            {isAdmin && (
+              <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('AdminUsers')}>
+                <Users color={Colors.textSecondary} size={18} />
+                {isWide && <Text style={styles.navBtnText}>Users</Text>}
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
+              {user?.photoURL ? (
+                <Image source={{ uri: user.photoURL }} style={styles.profileAvatar} />
+              ) : (
+                <View style={[styles.profileAvatar, styles.profileAvatarFallback, { backgroundColor: avatarColor }]}>
+                  <Text style={styles.profileInitial}>{initial}</Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity style={[styles.navBtn, styles.logoutBtn]} onPress={signOut}>
               <LogOut color="#FF4444" size={18} />
@@ -190,6 +213,26 @@ const styles = StyleSheet.create({
   logoutBtnText: {
     color: '#FF4444',
     fontSize: 13,
+  },
+  profileBtn: {
+    padding: 2,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: Colors.accent + '60',
+  },
+  profileAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  profileAvatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileInitial: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   // Content
   content: {
