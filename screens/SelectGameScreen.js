@@ -55,6 +55,15 @@ const GAMES = [
     isUse: true,
     isExternal: true,
   },
+  {
+    id: 'soundboard',
+    title: 'Soundboard',
+    description: 'ปุ่มเสียงสำหรับ Stream ส่งไปเล่นที่ OBS',
+    emoji: '🔊',
+    screen: 'SoundBoard',
+    tag: 'NEW',
+    isUse: true,
+  },
 ];
 
 export default function SelectGameScreen({ navigation }) {

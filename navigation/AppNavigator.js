@@ -21,6 +21,7 @@ import MonopolyGameScreen from '../screens/monopoly/MonopolyGameScreen';
 import MonopolyResultScreen from '../screens/monopoly/MonopolyResultScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AdminUsersScreen from '../screens/AdminUsersScreen';
+import SoundBoardScreen from '../screens/SoundBoardScreen';
 
 const Stack = createStackNavigator();
 
@@ -62,6 +63,7 @@ function AppStack() {
       <Stack.Screen name="MonopolyResult" component={MonopolyResultScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+      <Stack.Screen name="SoundBoard" component={SoundBoardScreen} />
     </Stack.Navigator>
   );
 }

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soundboard Display - VTuber Tools</title>
+  <link rel="icon" href="/assets/assetslogo.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* ── Fullscreen overlays ── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      z-index: 999;
+    }
+
+    /* Unlock screen */
+    #unlockScreen {
+      background: rgba(0, 0, 0, 0.88);
+      color: #FFD700;
+      cursor: pointer;
+    }
+    #unlockScreen .icon { font-size: 52px; }
+    #unlockScreen .label { font-size: 20px; font-weight: bold; }
+    #unlockScreen .hint { font-size: 13px; color: #aaa; }
+
+    /* Channel select screen */
+    #channelScreen {
+      background: rgba(18, 18, 18, 0.95);
+      display: none;
+    }
+    #channelScreen h2 {
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    #channelList {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 280px;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    .ch-btn {
+      padding: 12px 20px;
+      border-radius: 10px;
+      border: 2px solid #2A2A2A;
+      background: #1E1E1E;
+      color: #ccc;
+      font-size: 15px;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .ch-btn:hover { border-color: #FFD700; color: #FFD700; }
+    .ch-btn.all { border-color: #444; color: #888; }
+    #loadingChannels { color: #666; font-size: 14px; }
+
+    /* Status badges (bottom-right, always on top) */
+    #statusBar {
+      position: fixed;
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .playing-badge {
+      background: rgba(0, 0, 0, 0.7);
+      color: #FFD700;
+      border: 1px solid #FFD700;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    /* Change-channel button (top-left corner, always visible after setup) */
+    #changeChBtn {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #888;
+      font-size: 12px;
+      padding: 4px 10px;
+      cursor: pointer;
+      z-index: 50;
+      display: none;
+    }
+    #changeChBtn:hover { color: #FFD700; border-color: #FFD700; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Step 1: Unlock audio -->
+  <div id="unlockScreen" class="screen">
+    <div class="icon">🔊</div>
+    <div class="label">คลิกเพื่อเปิดใช้งานเสียง</div>
+    <div class="hint">จำเป็นสำหรับ OBS Browser Source — คลิกครั้งเดียวพอ</div>
+  </div>
+
+  <!-- Step 2: Pick channel -->
+  <div id="channelScreen" class="screen">
+    <h2>เลือก Channel</h2>
+    <div id="channelList">
+      <div id="loadingChannels">กำลังโหลด...</div>
+    </div>
+  </div>
+
+  <!-- Change channel button -->
+  <button id="changeChBtn">⚙ เปลี่ยน Channel</button>
+
+  <!-- Playing badges -->
+  <div id="statusBar"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC95K5rmqsZbmPmSDvgGeWgqbQvOll4X60",
+      authDomain: "tuber-tools-266cb.firebaseapp.com",
+      databaseURL: "https://tuber-tools-266cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tuber-tools-266cb",
+      storageBucket: "tuber-tools-266cb.firebasestorage.app",
+      messagingSenderId: "519614170930",
+      appId: "1:519614170930:web:243813c3bcba9df196b92b",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // ─── State ───────────────────────────────────────────────────────────────
+    let selectedChannelId = null; // null = all channels
+    let lastStopAt = null;
+
+    // ─── Audio Pool ──────────────────────────────────────────────────────────
+    const MAX_POOL = 8;
+    const audioPool = [];
+    const statusBar = document.getElementById('statusBar');
+
+    function addBadge(id, name) {
+      const el = document.createElement('div');
+      el.className = 'playing-badge';
+      el.id = `badge-${id}`;
+      el.textContent = `▶ ${name || 'เสียง'}`;
+      statusBar.appendChild(el);
+    }
+    function removeBadge(id) {
+      const el = document.getElementById(`badge-${id}`);
+      if (el) el.remove();
+    }
+    function stopAll() {
+      audioPool.forEach((e) => { e.audio.pause(); e.audio.currentTime = 0; removeBadge(e.id); });
+      audioPool.length = 0;
+    }
+    function playSound({ buttonId, soundUrl, volume, loop, stopOnNew, buttonName }) {
+      if (!soundUrl) return;
+      if (stopOnNew) stopAll();
+      if (audioPool.length >= MAX_POOL) {
+        const oldest = audioPool.shift();
+        oldest.audio.pause();
+        removeBadge(oldest.id);
+      }
+      const audio = new Audio(soundUrl);
+      audio.volume = Math.min(1, Math.max(0, volume != null ? volume : 1));
+      audio.loop = !!loop;
+      const entryId = Date.now();
+      audioPool.push({ id: entryId, audio, buttonId });
+      addBadge(entryId, buttonName);
+      audio.play().catch((err) => {
+        console.warn('Audio play blocked:', err);
+        removeBadge(entryId);
+        const idx = audioPool.findIndex((e) => e.id === entryId);
+        if (idx !== -1) audioPool.splice(idx, 1);
+      });
+      audio.addEventListener('ended', () => {
+        removeBadge(entryId);
+        const idx = audioPool.findIndex((e) => e.id === entryId);
+        if (idx !== -1) audioPool.splice(idx, 1);
+      });
+    }
+
+    // ─── Firebase Listeners ──────────────────────────────────────────────────
+    // Use push-key as cursor so we only receive events triggered AFTER page load
+    const queueStartKey = db.ref().push().key;
+    db.ref('soundboard/queue').orderByKey().startAt(queueStartKey)
+      .on('child_added', (snapshot) => {
+        const data = snapshot.val();
+        if (!data || data.action !== 'play') return;
+        if (selectedChannelId && data.channelId !== selectedChannelId) return;
+        playSound(data);
+      });
+
+    db.ref('soundboard/stopSignal').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data || !data.triggeredAt) return;
+      if (data.triggeredAt === lastStopAt) return;
+      lastStopAt = data.triggeredAt;
+      stopAll();
+    });
+
+    // ─── Channel Picker ──────────────────────────────────────────────────────
+    const unlockScreen  = document.getElementById('unlockScreen');
+    const channelScreen = document.getElementById('channelScreen');
+    const channelList   = document.getElementById('channelList');
+    const changeChBtn   = document.getElementById('changeChBtn');
+
+    function showChannelPicker() {
+      stopAll();
+      channelScreen.style.display = 'flex';
+      changeChBtn.style.display = 'none';
+      db.ref('soundboard/channels').once('value', (snapshot) => {
+        channelList.innerHTML = '';
+        // "All channels" option
+        const allBtn = document.createElement('button');
+        allBtn.className = 'ch-btn all';
+        allBtn.textContent = '🔊 ทุก Channel';
+        allBtn.onclick = () => selectChannel(null, 'ทุก Channel');
+        channelList.appendChild(allBtn);
+
+        if (snapshot.exists()) {
+          const channels = Object.values(snapshot.val()).sort((a, b) => a.order - b.order);
+          channels.forEach((ch) => {
+            const btn = document.createElement('button');
+            btn.className = 'ch-btn';
+            btn.textContent = ch.name;
+            btn.onclick = () => selectChannel(ch.id, ch.name);
+            channelList.appendChild(btn);
+          });
+        } else {
+          const empty = document.createElement('div');
+          empty.style.color = '#666';
+          empty.style.fontSize = '13px';
+          empty.textContent = 'ยังไม่มี Channel';
+          channelList.appendChild(empty);
+        }
+      });
+    }
+
+    function selectChannel(channelId, channelName) {
+      selectedChannelId = channelId;
+      channelScreen.style.display = 'none';
+      changeChBtn.style.display = 'block';
+      changeChBtn.textContent = `⚙ ${channelName}`;
+    }
+
+    changeChBtn.addEventListener('click', showChannelPicker);
+
+    // ─── Step 1: Unlock Audio ────────────────────────────────────────────────
+    unlockScreen.addEventListener('click', () => {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx.resume().then(() => {
+        unlockScreen.style.display = 'none';
+        showChannelPicker();
+      });
+    }, { once: true });
+  </script>
+
+</body>
+</html>

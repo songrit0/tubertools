@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "soundboard": {
+      "channels": {
+        ".read": true,
+        ".write": "auth != null"
+      },
+      "buttons": {
+        ".read": true,
+        ".write": "auth != null"
+      },
+      "queue": {
+        ".read": true,
+        ".write": true
+      },
+      "stopSignal": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "_ping": {
+      ".write": true,
+      ".read": false
+    },
+    "$other": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

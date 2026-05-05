@@ -1,0 +1,13 @@
+[
+  {
+    "origin": [
+      "http://localhost:8081",
+      "http://localhost:19006",
+      "https://tuber-tools-266cb.web.app",
+      "https://tuber-tools-266cb.firebaseapp.com"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Authorization"],
+    "maxAgeSeconds": 3600
+  }
+]

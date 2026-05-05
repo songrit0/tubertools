@@ -1,4 +1,7 @@
 {
+  "database": {
+    "rules": "database.rules.json"
+  },
   "hosting": {
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
@@ -14,6 +17,22 @@
       {
         "source": "/textbox-preview",
         "destination": "/textbox-preview.html"
+      },
+      {
+        "source": "/soundboard-display",
+        "destination": "/soundboard-display.html"
+      },
+      {
+        "source": "/music-player-display",
+        "destination": "/music-player-display.html"
+      },
+      {
+        "source": "/music-player-config",
+        "destination": "/music-player-config.html"
+      },
+      {
+        "source": "/soundboard-controller",
+        "destination": "/soundboard-controller.html"
       },
       {
         "source": "**",
