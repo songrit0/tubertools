@@ -5,12 +5,12 @@ import {
 } from 'react-native';
 import {
   Search, Shield, Users, Activity,
-  CalendarDays, Edit2, UserPlus, Download, Lock, Eye, EyeOff, User, Camera, X, CheckCircle, AlertCircle,
+  CalendarDays, Edit2, UserPlus, Download, Mail, User, Camera, X, CheckCircle, AlertCircle,
 } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToUsers, setUserRole, updateUserData } from '../services/userService';
-import { adminSetUserPassword } from '../services/authService';
+import { sendPasswordReset } from '../services/authService';
 import Sidebar from '../components/layout/Sidebar';
 import TopBar from '../components/layout/TopBar';
 
@@ -100,10 +100,8 @@ function EditUserModal({ user, userRole, visible, onClose, onSaved }) {
   const [displayName, setDisplayName] = useState('');
   const [photoURL, setPhotoURL] = useState('');
   const [selectedRole, setSelectedRole] = useState(currentRole);
-  const [newPassword, setNewPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savingPassword, setSavingPassword] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
   const [feedback, setFeedback] = useState(null); // { ok, msg }
 
   useEffect(() => {
@@ -111,8 +109,6 @@ function EditUserModal({ user, userRole, visible, onClose, onSaved }) {
       setDisplayName(user.displayName || '');
       setPhotoURL(user.photoURL || '');
       setSelectedRole(userRole || (user.isAdmin ? 'admin' : 'user'));
-      setNewPassword('');
-      setShowPassword(false);
       setFeedback(null);
     }
   }, [visible, user?.uid]);
@@ -139,20 +135,16 @@ function EditUserModal({ user, userRole, visible, onClose, onSaved }) {
     }
   };
 
-  const handleSetPassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      showFeedback(false, 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
-      return;
-    }
-    setSavingPassword(true);
+  const handlePasswordReset = async () => {
+    if (!user?.email) return;
+    setSendingReset(true);
     try {
-      await adminSetUserPassword(user.uid, newPassword);
-      setNewPassword('');
-      showFeedback(true, 'เปลี่ยนรหัสผ่านสำเร็จ');
-    } catch (e) {
-      showFeedback(false, e?.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+      await sendPasswordReset(user.email);
+      showFeedback(true, `ส่งอีเมลรีเซ็ตรหัสผ่านไปที่ ${user.email} แล้ว`);
+    } catch {
+      showFeedback(false, 'ส่งอีเมลไม่สำเร็จ');
     } finally {
-      setSavingPassword(false);
+      setSendingReset(false);
     }
   };
 
@@ -249,37 +241,19 @@ function EditUserModal({ user, userRole, visible, onClose, onSaved }) {
               </View>
             </View>
 
-            {/* Password */}
+            {/* Password reset */}
             <View style={styles.editField}>
-              <Text style={styles.editFieldLabel}>ตั้งรหัสผ่านใหม่</Text>
-              <View style={styles.editInputRow}>
-                <Lock size={15} color={Colors.fg3} strokeWidth={2} />
-                <TextInput
-                  style={styles.editInput}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)"
-                  placeholderTextColor={Colors.fg3}
-                  secureTextEntry={!showPassword}
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                />
-                <Pressable onPress={() => setShowPassword(v => !v)} style={{ padding: 4 }}>
-                  {showPassword
-                    ? <EyeOff size={15} color={Colors.fg3} strokeWidth={2} />
-                    : <Eye size={15} color={Colors.fg3} strokeWidth={2} />
-                  }
-                </Pressable>
-              </View>
+              <Text style={styles.editFieldLabel}>รหัสผ่าน</Text>
               <Pressable
-                style={({ pressed }) => [styles.setPasswordBtn, (!newPassword || newPassword.length < 6 || savingPassword) && { opacity: 0.4 }, pressed && { opacity: 0.7 }]}
-                onPress={handleSetPassword}
-                disabled={!newPassword || newPassword.length < 6 || savingPassword}
+                style={({ pressed }) => [styles.setPasswordBtn, pressed && { opacity: 0.7 }, (sendingReset || !user.email) && { opacity: 0.4 }]}
+                onPress={handlePasswordReset}
+                disabled={sendingReset || !user.email}
               >
-                {savingPassword
-                  ? <ActivityIndicator size="small" color={Colors.accentFg} />
-                  : <Text style={styles.setPasswordBtnText}>บันทึกรหัสผ่าน</Text>
+                {sendingReset
+                  ? <ActivityIndicator size="small" color={Colors.fg1} />
+                  : <Mail size={14} color={Colors.fg1} strokeWidth={2} />
                 }
+                <Text style={styles.setPasswordBtnText}>ส่งอีเมลรีเซ็ตรหัสผ่าน</Text>
               </Pressable>
             </View>
 
@@ -1026,18 +1000,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   setPasswordBtn: {
-    backgroundColor: Colors.bg3,
-    borderRadius: 8,
-    paddingVertical: 9,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.bg2,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: Colors.borderDefault,
-    marginTop: 2,
+    alignSelf: 'flex-start',
   },
   setPasswordBtnText: {
-    color: Colors.fg0,
+    color: Colors.fg1,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   editModalFooter: {
     flexDirection: 'row',

@@ -221,9 +221,9 @@ export default function LoginScreen({ navigation }) {
               </View>
               <Text style={styles.brandTagline}>Creator Suite · For YouTubers</Text>
               <Text style={styles.brandH1}>{"Stream tools\nfor YouTubers."}</Text>
-              <Text style={styles.brandSubtext}>
+              {/* <Text style={styles.brandSubtext}>
                 Soundboards, draft picks, lower-thirds, and game tools — one console for your channel and your team to run live, together.
-              </Text>
+              </Text> */}
             </View>
           </View>
 

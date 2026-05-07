@@ -16,8 +16,7 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { auth, functions } from './firebaseConfig';
-import { httpsCallable } from 'firebase/functions';
+import { auth } from './firebaseConfig';
 
 // Email/Password Sign In
 export const loginWithEmail = (email, password) => {
@@ -107,12 +106,6 @@ export const sendPasswordReset = (email) => {
   return sendPasswordResetEmail(auth, email);
 };
 
-// Admin: set another user's password via Cloud Function
-export const adminSetUserPassword = async (uid, password) => {
-  const fn = httpsCallable(functions, 'setUserPassword');
-  const result = await fn({ uid, password });
-  return result.data;
-};
 
 // Sign Out
 export const logout = () => {
