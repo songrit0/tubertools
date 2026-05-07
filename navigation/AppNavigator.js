@@ -15,10 +15,9 @@ import ResultSelectionScreen from '../screens/ResultSelectionScreen';
 import GameBoardScreen from '../screens/GameBoardScreen';
 import AdminDataScreen from '../screens/AdminDataScreen';
 import SelectionLogScreen from '../screens/SelectionLogScreen';
-import SelectionLowerThirdScreen from '../screens/SelectionLowerThirdScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AdminUsersScreen from '../screens/AdminUsersScreen';
-import SoundBoardScreen from '../screens/SoundBoardScreen';
+import VTuberDatabaseScreen from '../screens/VTuberDatabaseScreen';
 
 const Stack = createStackNavigator();
 
@@ -54,10 +53,9 @@ function AppStack() {
       <Stack.Screen name="GameBoard" component={GameBoardScreen} />
       <Stack.Screen name="AdminData" component={AdminDataScreen} />
       <Stack.Screen name="SelectionLog" component={SelectionLogScreen} />
-      <Stack.Screen name="SelectionLowerThird" component={SelectionLowerThirdScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
-      <Stack.Screen name="SoundBoard" component={SoundBoardScreen} />
+      <Stack.Screen name="VTuberDatabase" component={VTuberDatabaseScreen} />
     </Stack.Navigator>
   );
 }

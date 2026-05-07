@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, ActivityIndicator, KeyboardAvoidingView,
-  Platform, ScrollView, Animated, Pressable,
+  Platform, ScrollView, Animated, Pressable, useWindowDimensions,
 } from 'react-native';
-import { Mail, Lock, Eye, EyeOff, UserPlus, User, X, AlertCircle } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, User, X, AlertCircle, ArrowRight } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { registerWithEmail, updateUserDisplayName } from '../services/authService';
 
@@ -55,7 +55,7 @@ function ErrorPopup({ visible, title, message, onClose }) {
           <Text style={popup.message}>{message}</Text>
         </View>
         <Pressable style={popup.closeBtn} onPress={onClose}>
-          <X size={18} color={Colors.textSecondary} />
+          <X size={18} color={Colors.fg2} />
         </Pressable>
       </Animated.View>
     </View>
@@ -70,6 +70,9 @@ export default function RegisterScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorPopup, setErrorPopup] = useState({ visible: false, title: '', message: '' });
+
+  const { width } = useWindowDimensions();
+  const isWide = width >= 640;
 
   const showError = (title, message) => setErrorPopup({ visible: true, title, message });
 
@@ -102,94 +105,119 @@ export default function RegisterScreen({ navigation }) {
         onClose={() => setErrorPopup(p => ({ ...p, visible: false }))}
       />
 
+      {/* Ambient glow */}
+      <View style={styles.glowTop} pointerEvents="none" />
+      <View style={styles.glowBottom} pointerEvents="none" />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Header */}
-          <View style={styles.headerContainer}>
-            <View style={styles.logoWrap}>
-              <UserPlus size={32} color={Colors.accent} />
-            </View>
-            <Text style={styles.title}>สมัครสมาชิก</Text>
-            <Text style={styles.subtitle}>สร้างบัญชีใหม่เพื่อเริ่มใช้งาน</Text>
-          </View>
-
-          {/* Form */}
-          <View style={styles.formContainer}>
-            <View style={[styles.inputContainer, displayName ? styles.inputActive : null]}>
-              <User size={18} color={displayName ? Colors.accent : Colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="ชื่อที่ต้องการแสดง"
-                placeholderTextColor={Colors.textSecondary}
-                value={displayName}
-                onChangeText={setDisplayName}
-                autoCorrect={false}
-                maxLength={20}
-              />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.card, isWide && styles.cardWide]}>
+            {/* Logo row */}
+            <View style={styles.logoRow}>
+              <View style={styles.logoMark}>
+                <Text style={styles.logoMarkText}>T</Text>
+              </View>
+              <Text style={styles.logoName}>tubertools.app</Text>
             </View>
 
-            <View style={[styles.inputContainer, email ? styles.inputActive : null]}>
-              <Mail size={18} color={email ? Colors.accent : Colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email หรือ Username"
-                placeholderTextColor={Colors.textSecondary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+            {/* Labels */}
+            <Text style={styles.createTag}>CREATE ACCOUNT</Text>
+            <Text style={styles.cardH2}>Join your studio</Text>
+            <Text style={styles.cardSub}>Sign up to manage your stream.</Text>
+
+            {/* Fields */}
+            <View style={[styles.fieldsWrap, isWide && styles.fieldsGrid]}>
+              {/* Display Name */}
+              <View style={[styles.inputContainer, displayName ? styles.inputActive : null, isWide && styles.fieldHalf]}>
+                <User size={16} color={displayName ? Colors.accent : Colors.fg3} style={styles.inputIconLeft} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Display name"
+                  placeholderTextColor={Colors.fg3}
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  autoCorrect={false}
+                  maxLength={20}
+                />
+              </View>
+
+              {/* Email */}
+              <View style={[styles.inputContainer, email ? styles.inputActive : null, isWide && styles.fieldHalf]}>
+                <Mail size={16} color={email ? Colors.accent : Colors.fg3} style={styles.inputIconLeft} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email or username"
+                  placeholderTextColor={Colors.fg3}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Password */}
+              <View style={[styles.inputContainer, password ? styles.inputActive : null, isWide && styles.fieldHalf]}>
+                <Lock size={16} color={password ? Colors.accent : Colors.fg3} style={styles.inputIconLeft} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password (min 6 chars)"
+                  placeholderTextColor={Colors.fg3}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                  {showPassword
+                    ? <EyeOff size={16} color={Colors.fg3} />
+                    : <Eye size={16} color={Colors.fg3} />
+                  }
+                </TouchableOpacity>
+              </View>
+
+              {/* Confirm Password */}
+              <View style={[styles.inputContainer, confirmPassword ? styles.inputActive : null, isWide && styles.fieldHalf]}>
+                <Lock size={16} color={confirmPassword ? Colors.accent : Colors.fg3} style={styles.inputIconLeft} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm password"
+                  placeholderTextColor={Colors.fg3}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showPassword}
+                />
+              </View>
             </View>
 
-            <View style={[styles.inputContainer, password ? styles.inputActive : null]}>
-              <Lock size={18} color={password ? Colors.accent : Colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)"
-                placeholderTextColor={Colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                {showPassword ? <EyeOff size={18} color={Colors.textSecondary} /> : <Eye size={18} color={Colors.textSecondary} />}
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.inputContainer, confirmPassword ? styles.inputActive : null]}>
-              <Lock size={18} color={confirmPassword ? Colors.accent : Colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="ยืนยันรหัสผ่าน"
-                placeholderTextColor={Colors.textSecondary}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showPassword}
-              />
-            </View>
-
+            {/* Submit button */}
             <TouchableOpacity
-              style={[styles.registerBtn, loading && styles.btnDisabled]}
+              style={[styles.primaryBtn, loading && styles.btnDisabled]}
               onPress={handleRegister}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#000" />
+                <ActivityIndicator color={Colors.accentFg} />
               ) : (
-                <Text style={styles.registerBtnText}>สมัครสมาชิก</Text>
+                <View style={styles.btnRow}>
+                  <Text style={styles.primaryBtnText}>Create account</Text>
+                  <ArrowRight size={16} color={Colors.accentFg} />
+                </View>
               )}
             </TouchableOpacity>
-          </View>
 
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>มีบัญชีอยู่แล้ว? </Text>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={styles.loginLink}>เข้าสู่ระบบ</Text>
-            </TouchableOpacity>
+            {/* Login link */}
+            <View style={styles.loginRow}>
+              <Text style={styles.loginText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.loginLink}>Sign in</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -208,79 +236,217 @@ function getErrorMessage(code) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  keyboardView: { flex: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.bg0,
+    overflow: 'hidden',
+  },
+
+  glowTop: {
+    position: 'absolute',
+    top: '-15%',
+    left: '20%',
+    width: 600,
+    height: 600,
+    borderRadius: 300,
+    backgroundColor: 'rgba(255,214,107,0.05)',
+    pointerEvents: 'none',
+  },
+  glowBottom: {
+    position: 'absolute',
+    bottom: '-15%',
+    right: '10%',
+    width: 500,
+    height: 500,
+    borderRadius: 250,
+    backgroundColor: 'rgba(96,165,250,0.04)',
+    pointerEvents: 'none',
+  },
+
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 28,
+    alignItems: 'center',
+    paddingHorizontal: 20,
     paddingVertical: 40,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
   },
 
-  headerContainer: { alignItems: 'center', marginBottom: 32 },
-  logoWrap: {
-    width: 64, height: 64, borderRadius: 20,
-    backgroundColor: '#1A1A1A',
-    borderWidth: 1, borderColor: '#2A2A2A',
-    justifyContent: 'center', alignItems: 'center',
+  card: {
+    width: '100%',
+    backgroundColor: Colors.bg1,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    borderRadius: 14,
+    padding: 28,
+  },
+  cardWide: {
+    width: 460,
+    padding: 32,
+  },
+
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 24,
+  },
+  logoMark: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: Colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoMarkText: {
+    color: Colors.accentFg,
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  logoName: {
+    color: Colors.fg1,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  createTag: {
+    color: Colors.accent,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  cardH2: {
+    color: Colors.fg0,
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  cardSub: {
+    color: Colors.fg2,
+    fontSize: 13,
+    marginBottom: 24,
+  },
+
+  fieldsWrap: {
+    gap: 12,
     marginBottom: 16,
   },
-  title: { fontSize: 26, fontWeight: 'bold', color: Colors.text },
-  subtitle: { fontSize: 14, color: Colors.textSecondary, marginTop: 6 },
+  fieldsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  fieldHalf: {
+    width: '47%',
+    flexShrink: 1,
+  },
 
-  formContainer: { gap: 12 },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 52,
-    borderWidth: 1.5,
-    borderColor: '#2A2A2A',
+    backgroundColor: Colors.bg2,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 48,
+    borderWidth: 1,
+    borderColor: Colors.borderDefault,
   },
-  inputActive: { borderColor: Colors.accent + '60' },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, color: Colors.text, fontSize: 15, height: '100%' },
-  eyeIcon: { padding: 4 },
+  inputActive: {
+    borderColor: Colors.accent + '55',
+  },
+  inputIconLeft: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    color: Colors.fg0,
+    fontSize: 14,
+    height: '100%',
+  },
+  eyeBtn: {
+    padding: 4,
+    marginLeft: 4,
+  },
 
-  registerBtn: {
+  primaryBtn: {
     backgroundColor: Colors.accent,
-    height: 52,
-    borderRadius: 12,
+    height: 48,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    marginBottom: 4,
   },
-  btnDisabled: { opacity: 0.6 },
-  registerBtnText: { color: '#000', fontSize: 15, fontWeight: 'bold' },
+  btnDisabled: { opacity: 0.55 },
+  btnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  primaryBtnText: {
+    color: Colors.accentFg,
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 0.3,
+  },
 
-  loginContainer: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
-  loginText: { color: Colors.textSecondary, fontSize: 14 },
-  loginLink: { color: Colors.accent, fontSize: 14, fontWeight: 'bold' },
+  loginRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  loginText: {
+    color: Colors.fg2,
+    fontSize: 13,
+  },
+  loginLink: {
+    color: Colors.accent,
+    fontSize: 13,
+    fontWeight: '600',
+  },
 });
 
 const popup = StyleSheet.create({
-  overlay: { position: 'absolute', bottom: 24, left: 16, right: 16, zIndex: 999 },
+  overlay: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    zIndex: 999,
+  },
   box: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#1A1A1A', borderRadius: 14, padding: 14,
-    borderWidth: 1.5, borderColor: '#FF444440', gap: 12,
-    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bg3,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#F8717140',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
   },
   iconWrap: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#FF444415', justifyContent: 'center', alignItems: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8717115',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   body: { flex: 1 },
-  title: { color: '#FF6666', fontSize: 13, fontWeight: 'bold', marginBottom: 2 },
-  message: { color: Colors.textSecondary, fontSize: 12, lineHeight: 17 },
+  title: { color: '#F87171', fontSize: 13, fontWeight: 'bold', marginBottom: 2 },
+  message: { color: Colors.fg2, fontSize: 12, lineHeight: 17 },
   closeBtn: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#252525', justifyContent: 'center', alignItems: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.bg4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

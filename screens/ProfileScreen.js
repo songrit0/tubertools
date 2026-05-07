@@ -4,10 +4,16 @@ import {
   SafeAreaView, ScrollView, Animated, Pressable, Image,
   ActivityIndicator, Platform, KeyboardAvoidingView,
 } from 'react-native';
-import { ChevronLeft, User, Mail, Lock, Eye, EyeOff, Camera, CheckCircle, AlertCircle, X, Shield } from 'lucide-react-native';
+import {
+  User, Mail, Lock, Eye, EyeOff, Camera,
+  CheckCircle, AlertCircle, X, Shield, LogOut,
+} from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserDisplayName, updateUserPhoto, changePassword } from '../services/authService';
+import { saveUserToDatabase } from '../services/userService';
+import Sidebar from '../components/layout/Sidebar';
+import TopBar from '../components/layout/TopBar';
 
 const AVATAR_COLORS = [
   '#E74C3C', '#E67E22', '#F1C40F', '#2ECC71',
@@ -40,9 +46,9 @@ function Toast({ visible, success, message, onClose }) {
 
   if (!visible) return null;
 
-  const borderColor = success ? '#1DB95440' : '#FF444440';
-  const iconColor = success ? '#1DB954' : '#FF4444';
-  const iconBg = success ? '#1DB95415' : '#FF444415';
+  const borderColor = success ? Colors.green + '40' : Colors.red + '40';
+  const iconColor = success ? Colors.green : Colors.red;
+  const iconBg = success ? Colors.greenSoft : Colors.redSoft;
 
   return (
     <View style={toast.overlay}>
@@ -53,17 +59,18 @@ function Toast({ visible, success, message, onClose }) {
             : <AlertCircle size={24} color={iconColor} />
           }
         </View>
-        <Text style={[toast.message, { color: success ? '#4ADE80' : '#FF6666' }]}>{message}</Text>
+        <Text style={[toast.message, { color: success ? Colors.green : Colors.red }]}>{message}</Text>
         <Pressable style={toast.closeBtn} onPress={onClose}>
-          <X size={16} color={Colors.textSecondary} />
+          <X size={16} color={Colors.fg2} />
         </Pressable>
       </Animated.View>
     </View>
   );
 }
 
+
 export default function ProfileScreen({ navigation }) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, role, signOut, refreshUser } = useAuth();
 
   const isGoogleUser = user?.providerData?.some(p => p.providerId === 'google.com') ?? false;
 
@@ -86,35 +93,37 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleSaveProfile = async () => {
-    if (!displayName.trim()) { showToast(false, 'กรุณากรอกชื่อที่ต้องการแสดง'); return; }
+    if (!displayName.trim()) { showToast(false, 'Please enter a display name'); return; }
     setSavingProfile(true);
     try {
       await updateUserDisplayName(displayName.trim());
       await updateUserPhoto(photoURL.trim());
-      showToast(true, 'บันทึกโปรไฟล์สำเร็จ');
+      if (user) await saveUserToDatabase({ ...user, displayName: displayName.trim(), photoURL: photoURL.trim() });
+      await refreshUser();
+      showToast(true, 'Profile saved successfully');
     } catch {
-      showToast(false, 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
+      showToast(false, 'Failed to save profile. Please try again.');
     } finally {
       setSavingProfile(false);
     }
   };
 
   const handleChangePassword = async () => {
-    if (!currentPassword) { showToast(false, 'กรุณากรอกรหัสผ่านปัจจุบัน'); return; }
-    if (!newPassword) { showToast(false, 'กรุณากรอกรหัสผ่านใหม่'); return; }
-    if (newPassword.length < 6) { showToast(false, 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'); return; }
-    if (newPassword !== confirmNewPassword) { showToast(false, 'รหัสผ่านใหม่ไม่ตรงกัน'); return; }
+    if (!currentPassword) { showToast(false, 'Enter your current password'); return; }
+    if (!newPassword) { showToast(false, 'Enter a new password'); return; }
+    if (newPassword.length < 6) { showToast(false, 'New password must be at least 6 characters'); return; }
+    if (newPassword !== confirmNewPassword) { showToast(false, 'New passwords do not match'); return; }
     setSavingPassword(true);
     try {
       await changePassword(currentPassword, newPassword);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
-      showToast(true, 'เปลี่ยนรหัสผ่านสำเร็จ');
+      showToast(true, 'Password changed successfully');
     } catch (e) {
       const msg = (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential')
-        ? 'รหัสผ่านปัจจุบันไม่ถูกต้อง'
-        : 'เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาลองใหม่';
+        ? 'Current password is incorrect'
+        : 'Failed to change password. Please try again.';
       showToast(false, msg);
     } finally {
       setSavingPassword(false);
@@ -126,8 +135,12 @@ export default function ProfileScreen({ navigation }) {
   const avatarColor = getAvatarColor(email);
   const previewPhoto = photoURL.trim();
 
+  const joinedDate = user?.metadata?.creationTime
+    ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : null;
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.root}>
       <Toast
         visible={toastState.visible}
         success={toastState.success}
@@ -135,302 +148,532 @@ export default function ProfileScreen({ navigation }) {
         onClose={() => setToastState(t => ({ ...t, visible: false }))}
       />
 
-      {/* Navbar */}
-      <View style={styles.navbar}>
-        <View style={styles.navInner}>
-          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <ChevronLeft color={Colors.text} size={20} />
-            <Text style={styles.backText}>กลับ</Text>
-          </Pressable>
-          <Text style={styles.navTitle}>โปรไฟล์</Text>
-          <View style={{ width: 70 }} />
-        </View>
-      </View>
+      {/* Sidebar */}
+      <Sidebar navigation={navigation} active="profile" user={user} isAdmin={isAdmin} role={role} />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Avatar preview */}
-          <View style={styles.avatarSection}>
-            {previewPhoto ? (
-              <Image source={{ uri: previewPhoto }} style={styles.avatarImg} />
-            ) : (
-              <View style={[styles.avatarCircle, { backgroundColor: avatarColor }]}>
-                <Text style={styles.avatarInitial}>{initial}</Text>
-              </View>
-            )}
-            <Text style={styles.avatarName}>{user?.displayName || email.split('@')[0]}</Text>
-            <Text style={styles.avatarEmail}>{email}</Text>
-            {isAdmin && (
-              <View style={styles.adminBadge}>
-                <Shield size={13} color="#F1C40F" />
-                <Text style={styles.adminBadgeText}>Admin</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Profile Info Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ข้อมูลโปรไฟล์</Text>
-
-            <View style={[styles.inputContainer, displayName && styles.inputActive]}>
-              <User size={18} color={displayName ? Colors.accent : Colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="ชื่อที่ต้องการแสดง"
-                placeholderTextColor={Colors.textSecondary}
-                value={displayName}
-                onChangeText={setDisplayName}
-                autoCorrect={false}
-                maxLength={20}
-              />
-            </View>
-
-            <View style={[styles.inputContainer, previewPhoto && styles.inputActive]}>
-              <Camera size={18} color={previewPhoto ? Colors.accent : Colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="URL รูปโปรไฟล์ (ไม่บังคับ)"
-                placeholderTextColor={Colors.textSecondary}
-                value={photoURL}
-                onChangeText={setPhotoURL}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
-            </View>
-
-            <View style={styles.readonlyRow}>
-              <Mail size={16} color={Colors.textSecondary} style={styles.inputIcon} />
-              <Text style={styles.readonlyText}>{email}</Text>
-              <View style={styles.readonlyBadge}><Text style={styles.readonlyBadgeText}>อีเมล</Text></View>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.saveBtn, savingProfile && styles.btnDisabled]}
+      {/* Main */}
+      <View style={styles.main}>
+        <TopBar
+          crumbs={['System', 'Profile']}
+          navigation={navigation}
+          showSearch={false}
+          rightSlot={
+            <Pressable
+              style={[styles.saveHeaderBtn, savingProfile && { opacity: 0.6 }]}
               onPress={handleSaveProfile}
               disabled={savingProfile}
             >
               {savingProfile
-                ? <ActivityIndicator color="#000" />
-                : <Text style={styles.saveBtnText}>บันทึกโปรไฟล์</Text>
+                ? <ActivityIndicator size="small" color={Colors.accentFg} />
+                : <Text style={styles.saveHeaderBtnText}>Save changes</Text>
               }
-            </TouchableOpacity>
-          </View>
+            </Pressable>
+          }
+        />
 
-          {!isGoogleUser && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>เปลี่ยนรหัสผ่าน</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
-              <View style={[styles.inputContainer, currentPassword && styles.inputActive]}>
-                <Lock size={18} color={currentPassword ? Colors.accent : Colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="รหัสผ่านปัจจุบัน"
-                  placeholderTextColor={Colors.textSecondary}
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  secureTextEntry={!showCurrentPw}
-                />
-                <TouchableOpacity onPress={() => setShowCurrentPw(v => !v)} style={styles.eyeIcon}>
-                  {showCurrentPw
-                    ? <EyeOff size={18} color={Colors.textSecondary} />
-                    : <Eye size={18} color={Colors.textSecondary} />
+            {/* Hero Card */}
+            <View style={styles.heroCard}>
+              {/* Banner */}
+              <View style={styles.heroBanner}>
+                <View style={styles.heroBannerOverlay} />
+              </View>
+
+              {/* Avatar + info row */}
+              <View style={styles.heroBody}>
+                <View style={styles.heroAvatarRow}>
+                  {previewPhoto
+                    ? <Image source={{ uri: previewPhoto }} style={styles.heroAvatar} />
+                    : (
+                      <View style={[styles.heroAvatar, { backgroundColor: avatarColor }]}>
+                        <Text style={styles.heroAvatarInitial}>{initial}</Text>
+                      </View>
+                    )
                   }
-                </TouchableOpacity>
-              </View>
+                  <View style={styles.heroNameBlock}>
+                    <View style={styles.heroNameRow}>
+                      <Text style={styles.heroUsername}>{user?.displayName || email.split('@')[0]}</Text>
+                      {isAdmin && (
+                        <View style={styles.adminBadge}>
+                          <Shield size={11} color={Colors.accent} />
+                          <Text style={styles.adminBadgeText}>ADMIN</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.heroEmail}>{email}</Text>
+                    {joinedDate && (
+                      <Text style={styles.heroJoined}>Joined {joinedDate}</Text>
+                    )}
+                  </View>
+                </View>
 
-              <View style={[styles.inputContainer, newPassword && styles.inputActive]}>
-                <Lock size={18} color={newPassword ? Colors.accent : Colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)"
-                  placeholderTextColor={Colors.textSecondary}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry={!showNewPw}
-                />
-                <TouchableOpacity onPress={() => setShowNewPw(v => !v)} style={styles.eyeIcon}>
-                  {showNewPw
-                    ? <EyeOff size={18} color={Colors.textSecondary} />
-                    : <Eye size={18} color={Colors.textSecondary} />
-                  }
-                </TouchableOpacity>
+                {/* Change avatar button */}
+                <Pressable style={styles.changeAvatarBtn}>
+                  <Camera size={14} color={Colors.fg2} strokeWidth={2} />
+                  <Text style={styles.changeAvatarText}>Change</Text>
+                </Pressable>
               </View>
-
-              <View style={[styles.inputContainer, confirmNewPassword && styles.inputActive]}>
-                <Lock size={18} color={confirmNewPassword ? Colors.accent : Colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="ยืนยันรหัสผ่านใหม่"
-                  placeholderTextColor={Colors.textSecondary}
-                  value={confirmNewPassword}
-                  onChangeText={setConfirmNewPassword}
-                  secureTextEntry={!showNewPw}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.saveBtn, savingPassword && styles.btnDisabled]}
-                onPress={handleChangePassword}
-                disabled={savingPassword}
-              >
-                {savingPassword
-                  ? <ActivityIndicator color="#000" />
-                  : <Text style={styles.saveBtnText}>เปลี่ยนรหัสผ่าน</Text>
-                }
-              </TouchableOpacity>
             </View>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+            {/* Settings */}
+            <View style={styles.settingsGrid}>
+              {/* Account card */}
+              <View style={styles.settingsCard}>
+                <Text style={styles.cardTitle}>Account</Text>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>Display name</Text>
+                  <View style={[styles.inputContainer, displayName && styles.inputActive]}>
+                    <User size={16} color={displayName ? Colors.accent : Colors.fg3} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Your display name"
+                      placeholderTextColor={Colors.fg3}
+                      value={displayName}
+                      onChangeText={setDisplayName}
+                      autoCorrect={false}
+                      maxLength={20}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>Email</Text>
+                  <View style={[styles.inputContainer, styles.inputReadonly]}>
+                    <Mail size={16} color={Colors.fg3} style={styles.inputIcon} />
+                    <Text style={styles.readonlyText} numberOfLines={1}>{email}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>Avatar URL</Text>
+                  <View style={[styles.inputContainer, previewPhoto && styles.inputActive]}>
+                    <Camera size={16} color={previewPhoto ? Colors.accent : Colors.fg3} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="https://example.com/avatar.png"
+                      placeholderTextColor={Colors.fg3}
+                      value={photoURL}
+                      onChangeText={setPhotoURL}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="url"
+                    />
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.saveProfileBtn, savingProfile && styles.btnDisabled]}
+                  onPress={handleSaveProfile}
+                  disabled={savingProfile}
+                >
+                  {savingProfile
+                    ? <ActivityIndicator color={Colors.accentFg} />
+                    : <Text style={styles.saveProfileBtnText}>บันทึก</Text>
+                  }
+                </TouchableOpacity>
+
+                {!isGoogleUser && (
+                  <>
+                    <View style={styles.sectionDivider} />
+                    <Text style={styles.cardTitle}>Change password</Text>
+
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Current password</Text>
+                      <View style={[styles.inputContainer, currentPassword && styles.inputActive]}>
+                        <Lock size={16} color={currentPassword ? Colors.accent : Colors.fg3} style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Current password"
+                          placeholderTextColor={Colors.fg3}
+                          value={currentPassword}
+                          onChangeText={setCurrentPassword}
+                          secureTextEntry={!showCurrentPw}
+                        />
+                        <Pressable onPress={() => setShowCurrentPw(v => !v)} style={styles.eyeIcon}>
+                          {showCurrentPw
+                            ? <EyeOff size={16} color={Colors.fg3} />
+                            : <Eye size={16} color={Colors.fg3} />
+                          }
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>New password</Text>
+                      <View style={[styles.inputContainer, newPassword && styles.inputActive]}>
+                        <Lock size={16} color={newPassword ? Colors.accent : Colors.fg3} style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Min. 6 characters"
+                          placeholderTextColor={Colors.fg3}
+                          value={newPassword}
+                          onChangeText={setNewPassword}
+                          secureTextEntry={!showNewPw}
+                        />
+                        <Pressable onPress={() => setShowNewPw(v => !v)} style={styles.eyeIcon}>
+                          {showNewPw
+                            ? <EyeOff size={16} color={Colors.fg3} />
+                            : <Eye size={16} color={Colors.fg3} />
+                          }
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Confirm new password</Text>
+                      <View style={[styles.inputContainer, confirmNewPassword && styles.inputActive]}>
+                        <Lock size={16} color={confirmNewPassword ? Colors.accent : Colors.fg3} style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Repeat new password"
+                          placeholderTextColor={Colors.fg3}
+                          value={confirmNewPassword}
+                          onChangeText={setConfirmNewPassword}
+                          secureTextEntry={!showNewPw}
+                        />
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.savePwBtn, savingPassword && styles.btnDisabled]}
+                      onPress={handleChangePassword}
+                      disabled={savingPassword}
+                    >
+                      {savingPassword
+                        ? <ActivityIndicator color={Colors.accentFg} />
+                        : <Text style={styles.savePwBtnText}>Update password</Text>
+                      }
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                <View style={styles.sectionDivider} />
+
+                <Pressable
+                  style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.75 }]}
+                  onPress={signOut}
+                >
+                  <LogOut size={15} color={Colors.red} strokeWidth={2} />
+                  <Text style={styles.signOutText}>Sign out</Text>
+                </Pressable>
+              </View>
+            </View>
+
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-
-  navbar: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
-    backgroundColor: '#181818',
-  },
-  navInner: {
+  root: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    maxWidth: 800,
+    backgroundColor: Colors.bg0,
+  },
+  main: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  scrollContent: {
+    padding: 24,
+    gap: 16,
+    maxWidth: 1100,
     alignSelf: 'center',
     width: '100%',
   },
-  backBtn: {
+
+  // Save button in TopBar header area (rendered via custom approach)
+  saveHeaderBtn: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 110,
+    height: 32,
+  },
+  saveHeaderBtnText: {
+    color: Colors.accentFg,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Hero Card
+  heroCard: {
+    backgroundColor: Colors.bg1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    overflow: 'hidden',
+  },
+  heroBanner: {
+    height: 120,
+    backgroundColor: '#3D2800',
+    backgroundGradient: true,
+    position: 'relative',
+  },
+  heroBannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10,8,0,0.35)',
+  },
+  heroBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    marginTop: -32,
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  heroAvatarRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 16,
+  },
+  heroAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.bg0,
+    overflow: 'hidden',
+  },
+  heroAvatarInitial: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  heroNameBlock: {
+    paddingBottom: 4,
+    gap: 2,
+  },
+  heroNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  heroUsername: {
+    color: Colors.fg0,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  adminBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#242424',
-    minWidth: 70,
-  },
-  backText: { color: Colors.text, fontSize: 13 },
-  navTitle: { color: Colors.text, fontSize: 16, fontWeight: 'bold' },
-
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    maxWidth: 800,
-    width: '100%',
-    alignSelf: 'center',
-  },
-
-  avatarSection: { alignItems: 'center', marginBottom: 32 },
-  avatarImg: {
-    width: 88, height: 88, borderRadius: 44,
-    borderWidth: 2, borderColor: Colors.accent + '60',
-  },
-  avatarCircle: {
-    width: 88, height: 88, borderRadius: 44,
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)',
-  },
-  avatarInitial: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
-  avatarName: { color: Colors.text, fontSize: 18, fontWeight: 'bold', marginTop: 12 },
-  avatarEmail: { color: Colors.textSecondary, fontSize: 13, marginTop: 4 },
-  adminBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    marginTop: 10, paddingHorizontal: 12, paddingVertical: 5,
-    borderRadius: 20, backgroundColor: '#F1C40F15',
-    borderWidth: 1, borderColor: '#F1C40F40',
-  },
-  adminBadgeText: { color: '#F1C40F', fontSize: 13, fontWeight: 'bold' },
-
-  section: {
-    backgroundColor: '#141414',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: Colors.accentSoft,
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
-    gap: 12,
-    marginBottom: 20,
+    borderColor: Colors.accent + '40',
   },
-  sectionTitle: {
-    color: Colors.textSecondary,
+  adminBadgeText: {
+    color: Colors.accent,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  heroEmail: {
+    color: Colors.fg2,
+    fontSize: 12,
+    fontFamily: 'monospace',
+  },
+  heroJoined: {
+    color: Colors.fg3,
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  changeAvatarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.bg3,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: Colors.borderDefault,
+    alignSelf: 'flex-end',
+  },
+  changeAvatarText: {
+    color: Colors.fg2,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // Settings grid
+  settingsGrid: {
+    flexDirection: 'row',
+    gap: 16,
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+  },
+  settingsCard: {
+    flex: 1,
+    minWidth: 280,
+    backgroundColor: Colors.bg1,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    padding: 20,
+    gap: 14,
+  },
+  cardTitle: {
+    color: Colors.fg3,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-
+  sectionDivider: {
+    height: 1,
+    backgroundColor: Colors.borderSubtle,
+    marginVertical: 4,
+  },
+  fieldGroup: {
+    gap: 6,
+  },
+  fieldLabel: {
+    color: Colors.fg2,
+    fontSize: 12,
+    fontWeight: '500',
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 52,
+    backgroundColor: Colors.bg2,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 42,
     borderWidth: 1.5,
-    borderColor: '#2A2A2A',
-  },
-  inputActive: { borderColor: Colors.accent + '60' },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, color: Colors.text, fontSize: 15, height: '100%' },
-  eyeIcon: { padding: 4 },
-
-  readonlyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 48,
-    borderWidth: 1.5,
-    borderColor: '#222',
+    borderColor: Colors.borderDefault,
     gap: 10,
   },
-  readonlyText: { flex: 1, color: Colors.textSecondary, fontSize: 14 },
-  readonlyBadge: {
-    backgroundColor: '#2A2A2A',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  inputActive: {
+    borderColor: Colors.accent + '60',
   },
-  readonlyBadgeText: { color: Colors.textSecondary, fontSize: 10 },
-
-  saveBtn: {
+  inputReadonly: {
+    backgroundColor: Colors.bg1,
+    borderColor: Colors.borderSubtle,
+  },
+  inputIcon: {},
+  input: {
+    flex: 1,
+    color: Colors.fg0,
+    fontSize: 14,
+  },
+  readonlyText: {
+    flex: 1,
+    color: Colors.fg3,
+    fontSize: 14,
+  },
+  eyeIcon: {
+    padding: 4,
+  },
+  saveProfileBtn: {
     backgroundColor: Colors.accent,
-    height: 50,
-    borderRadius: 12,
+    height: 42,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
   },
-  btnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: '#000', fontSize: 15, fontWeight: 'bold' },
+  saveProfileBtnText: {
+    color: Colors.accentFg,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  savePwBtn: {
+    backgroundColor: Colors.bg3,
+    borderWidth: 1,
+    borderColor: Colors.borderDefault,
+    height: 42,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  savePwBtnText: {
+    color: Colors.fg0,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  btnDisabled: { opacity: 0.5 },
+
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.redSoft,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: Colors.red + '30',
+    alignSelf: 'flex-start',
+  },
+  signOutText: {
+    color: Colors.red,
+    fontSize: 13,
+    fontWeight: '600',
+  },
 });
 
 const toast = StyleSheet.create({
-  overlay: { position: 'absolute', bottom: 24, left: 16, right: 16, zIndex: 999 },
+  overlay: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    zIndex: 999,
+  },
   box: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#1A1A1A', borderRadius: 14, padding: 14,
-    borderWidth: 1.5, gap: 12,
-    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bg2,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1.5,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
   },
   iconWrap: {
-    width: 36, height: 36, borderRadius: 18,
-    justifyContent: 'center', alignItems: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  message: { flex: 1, fontSize: 13, fontWeight: '600' },
+  message: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   closeBtn: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#252525', justifyContent: 'center', alignItems: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.bg3,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

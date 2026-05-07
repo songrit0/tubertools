@@ -14,8 +14,10 @@ import {
   isSignInWithEmailLink,
   signInWithEmailLink,
   onAuthStateChanged,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
-import { auth } from './firebaseConfig';
+import { auth, functions } from './firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
 
 // Email/Password Sign In
 export const loginWithEmail = (email, password) => {
@@ -28,15 +30,26 @@ export const registerWithEmail = (email, password) => {
 };
 
 // Update display name
-export const updateUserDisplayName = (displayName) => {
+export const updateUserDisplayName = async (displayName) => {
   if (!auth.currentUser) throw new Error('No user logged in');
-  return updateProfile(auth.currentUser, { displayName });
+  await updateProfile(auth.currentUser, { displayName });
+  await auth.currentUser.reload();
+  return auth.currentUser;
 };
 
 // Update photo URL
-export const updateUserPhoto = (photoURL) => {
+export const updateUserPhoto = async (photoURL) => {
   if (!auth.currentUser) throw new Error('No user logged in');
-  return updateProfile(auth.currentUser, { photoURL: photoURL || null });
+  await updateProfile(auth.currentUser, { photoURL: photoURL || null });
+  await auth.currentUser.reload();
+  return auth.currentUser;
+};
+
+// Reload current user and return fresh object
+export const reloadUser = async () => {
+  if (!auth.currentUser) return null;
+  await auth.currentUser.reload();
+  return auth.currentUser;
 };
 
 // Change password (requires reauthentication)
@@ -87,6 +100,18 @@ export const loginWithGoogleCredential = (idToken) => {
 // Anonymous Sign In
 export const loginAnonymously = () => {
   return signInAnonymously(auth);
+};
+
+// Send password reset email
+export const sendPasswordReset = (email) => {
+  return sendPasswordResetEmail(auth, email);
+};
+
+// Admin: set another user's password via Cloud Function
+export const adminSetUserPassword = async (uid, password) => {
+  const fn = httpsCallable(functions, 'setUserPassword');
+  const result = await fn({ uid, password });
+  return result.data;
 };
 
 // Sign Out

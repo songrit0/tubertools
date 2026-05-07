@@ -36,6 +36,26 @@ export const checkIsAdmin = async (uid) => {
   return snapshot.val() === true;
 };
 
+export const getUserRole = async (uid) => {
+  const snapshot = await get(ref(realtimeDb, `users/${uid}`));
+  if (!snapshot.exists()) return 'user';
+  const data = snapshot.val();
+  if (data.role) return data.role;
+  if (data.isAdmin === true) return 'admin';
+  return 'user';
+};
+
+export const setUserRole = async (uid, role) => {
+  await update(ref(realtimeDb, `users/${uid}`), {
+    role,
+    isAdmin: role === 'admin',
+  });
+};
+
 export const setAdminStatus = async (uid, isAdmin) => {
   await update(ref(realtimeDb, `users/${uid}`), { isAdmin });
+};
+
+export const updateUserData = async (uid, data) => {
+  await update(ref(realtimeDb, `users/${uid}`), data);
 };

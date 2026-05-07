@@ -375,6 +375,51 @@ export const subscribeToTextBoxes = (callback) => {
   return () => off(dbRef, 'value', listener);
 };
 
+// Draft Control (คุมการเปิด/ปิดหน้าเลือก + whitelist)
+const DRAFT_CONTROL_PATH = 'draftControl';
+
+export const subscribeToDraftControl = (callback) => {
+  const dbRef = ref(realtimeDb, DRAFT_CONTROL_PATH);
+  const listener = onValue(dbRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      callback({
+        isOpen: data.isOpen ?? false,
+        allowedIds: data.allowedIds ? Object.keys(data.allowedIds) : [],
+      });
+    } else {
+      callback({ isOpen: false, allowedIds: [] });
+    }
+  });
+  return () => off(dbRef, 'value', listener);
+};
+
+export const setDraftOpen = async (isOpen) => {
+  try {
+    const dbRef = ref(realtimeDb, `${DRAFT_CONTROL_PATH}/isOpen`);
+    await set(dbRef, isOpen);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const setDraftAllowedIds = async (ids) => {
+  try {
+    const dbRef = ref(realtimeDb, `${DRAFT_CONTROL_PATH}/allowedIds`);
+    if (!ids || ids.length === 0) {
+      await remove(dbRef);
+    } else {
+      const val = {};
+      ids.forEach(id => { val[id] = true; });
+      await set(dbRef, val);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 // Text Boxes Config (ตำแหน่งและการตั้งค่า)
 const TEXT_BOXES_CONFIG_PATH = 'textBoxesConfig';
 

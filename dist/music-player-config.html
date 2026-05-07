@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Player — ตั้งค่า</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f0f13;
+      --surface: #18181f;
+      --surface2: #22222c;
+      --border: #2a2a38;
+      --text: #f0f0f5;
+      --muted: #6b6b85;
+      --accent: #FFD700;
+      --accent2: #f0c000;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── Header ── */
+    .page-header {
+      width: 100%;
+      max-width: 780px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .page-header .icon { font-size: 26px; }
+    .page-header h1 { font-size: 20px; font-weight: 700; }
+    .page-header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Card container ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      width: 100%;
+      max-width: 780px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Mode picker ── */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .mode-btn {
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 10px 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+    .mode-btn:hover { border-color: #444458; background: #1e1e2a; }
+    .mode-btn.active { border-color: var(--accent); background: rgba(255,215,0,0.06); }
+
+    .mode-btn .mode-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .mode-btn.active .mode-label { color: var(--accent); }
+
+    /* Mini previews inside mode buttons */
+    .mini-preview {
+      width: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Mini card */
+    .mp-card {
+      width: 70px;
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .mp-art {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 4px;
+      background: #5b8de8;
+    }
+    .mp-song { height: 5px; border-radius: 3px; background: #fff; width: 80%; margin: 0 auto; }
+    .mp-artist { height: 3px; border-radius: 3px; background: rgba(255,255,255,0.3); width: 60%; margin: 0 auto; }
+    .mp-bar-track { height: 2px; border-radius: 3px; background: rgba(255,255,255,0.15); margin: 2px 0; }
+    .mp-bar-fill { height: 100%; width: 35%; border-radius: 3px; background: rgba(255,255,255,0.7); }
+    .mp-controls { display: flex; justify-content: center; gap: 3px; }
+    .mp-ctrl { width: 5px; height: 5px; border-radius: 1px; background: rgba(255,255,255,0.5); }
+    .mp-ctrl.big { width: 7px; height: 7px; border-radius: 2px; background: rgba(255,255,255,0.85); }
+
+    /* Mini bar */
+    .mp-bar {
+      width: 100%;
+      background: #1a1a2e;
+      border-radius: 5px;
+      padding: 4px 5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .mp-bar-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .mp-bar-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .mp-bar-song { height: 4px; background: #fff; border-radius: 2px; width: 80%; }
+    .mp-bar-artist { height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; width: 55%; }
+    .mp-bar-prog { height: 2px; background: rgba(255,255,255,0.12); border-radius: 2px; margin-top: 2px; position: relative; }
+    .mp-bar-prog-fill { position: absolute; left: 0; top: 0; height: 100%; width: 35%; background: rgba(255,255,255,0.6); border-radius: 2px; }
+    .mp-bar-btns { display: flex; gap: 2px; align-items: center; }
+    .mp-bar-btn { width: 4px; height: 4px; background: rgba(255,255,255,0.4); border-radius: 1px; }
+    .mp-bar-btn.play { width: 6px; height: 6px; background: rgba(255,255,255,0.8); border-radius: 1px; }
+
+    /* ── Channel picker ── */
+    .ch-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .ch-btn {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .ch-btn:hover { border-color: #444458; color: var(--text); }
+    .ch-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(255,215,0,0.06); }
+    .ch-loading { color: var(--muted); font-size: 13px; }
+
+    /* ── Preview frame ── */
+    .preview-wrap {
+      width: 100%;
+      background: repeating-conic-gradient(#1c1c24 0% 25%, #181820 0% 50%) 0 0 / 20px 20px;
+      border-radius: 10px;
+      min-height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #previewFrame {
+      width: 100%;
+      height: 260px;
+      border: none;
+      background: transparent;
+    }
+
+    /* ── URL bar ── */
+    .url-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .url-box {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      word-break: break-all;
+      user-select: all;
+      cursor: text;
+    }
+
+    .action-btn {
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .action-btn:hover { opacity: 0.85; }
+    .action-btn.primary { background: var(--accent); color: #111; }
+    .action-btn.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #28a745;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── OBS hint ── */
+    .hint-box {
+      background: rgba(255,215,0,0.07);
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #d4b800;
+      line-height: 1.6;
+    }
+    .hint-box strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <div class="icon">🎵</div>
+    <div>
+      <h1>Music Player Display</h1>
+      <p>เลือกแบบและ Channel แล้วคัดลอก URL ไปใส่ใน OBS Browser Source</p>
+    </div>
+  </div>
+
+  <!-- Mode picker -->
+  <div class="card">
+    <div class="card-title">เลือกแบบแสดงผล</div>
+    <div class="mode-grid" id="modeGrid">
+
+      <button class="mode-btn active" data-mode="all" onclick="selectMode(this)">
+        <div class="mini-preview">
+          <div style="display:flex;gap:4px;align-items:flex-start;width:100%;justify-content:center">
+            <div class="mp-card" style="width:50px">
+              <div class="mp-art"></div>
+              <div class="mp-song"></div>
+              <div class="mp-artist"></div>
+              <div class="mp-bar-track"><div class="mp-bar-fill"></div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1">
+              <div class="mp-bar"><div class="mp-bar-thumb" style="background:#5b8de8"></div><div class="mp-bar-info"><div class="mp-bar-song"></div><div class="mp-bar-artist"></div></div></div>
+              <div class="mp-bar"><div class="mp-bar-thumb" style="background:#7c3aed"></div><div class="mp-bar-info"><div class="mp-bar-song"></div><div class="mp-bar-artist"></div></div></div>
+              <div class="mp-bar"><div class="mp-bar-thumb" style="background:#0ea5e9"></div><div class="mp-bar-info"><div class="mp-bar-song"></div><div class="mp-bar-artist"></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="mode-label">ทั้งหมด</div>
+      </button>
+
+      <button class="mode-btn" data-mode="card" onclick="selectMode(this)">
+        <div class="mini-preview">
+          <div class="mp-card">
+            <div class="mp-art"></div>
+            <div class="mp-song"></div>
+            <div class="mp-artist"></div>
+            <div class="mp-bar-track"><div class="mp-bar-fill"></div></div>
+            <div class="mp-controls">
+              <div class="mp-ctrl"></div><div class="mp-ctrl big"></div><div class="mp-ctrl"></div>
+            </div>
+          </div>
+        </div>
+        <div class="mode-label">Card เต็ม</div>
+      </button>
+
+      <button class="mode-btn" data-mode="bar1" onclick="selectMode(this)">
+        <div class="mini-preview">
+          <div class="mp-bar" style="background:#1a1a2e;border-radius:5px;padding:5px 6px;">
+            <div class="mp-bar-thumb" style="background:#5b8de8;width:20px;height:20px;border-radius:4px"></div>
+            <div class="mp-bar-info">
+              <div class="mp-bar-song"></div>
+              <div class="mp-bar-artist"></div>
+              <div class="mp-bar-prog"><div class="mp-bar-prog-fill"></div></div>
+            </div>
+            <div class="mp-bar-btns">
+              <div class="mp-bar-btn"></div><div class="mp-bar-btn play"></div><div class="mp-bar-btn"></div>
+            </div>
+          </div>
+        </div>
+        <div class="mode-label">Bar — Navy</div>
+      </button>
+
+      <button class="mode-btn" data-mode="bar2" onclick="selectMode(this)">
+        <div class="mini-preview">
+          <div class="mp-bar" style="background:#111827;border-radius:5px;padding:5px 6px;">
+            <div class="mp-bar-thumb" style="background:#7c3aed;width:20px;height:20px;border-radius:4px"></div>
+            <div class="mp-bar-info">
+              <div class="mp-bar-song"></div>
+              <div class="mp-bar-artist"></div>
+              <div class="mp-bar-prog"><div class="mp-bar-prog-fill" style="background:rgba(167,139,250,0.8)"></div></div>
+            </div>
+            <div class="mp-bar-btns">
+              <div class="mp-bar-btn"></div><div class="mp-bar-btn play"></div><div class="mp-bar-btn"></div>
+            </div>
+          </div>
+        </div>
+        <div class="mode-label">Bar — Purple</div>
+      </button>
+
+      <button class="mode-btn" data-mode="bar3" onclick="selectMode(this)">
+        <div class="mini-preview">
+          <div class="mp-bar" style="background:#0f172a;border-radius:5px;padding:5px 6px;">
+            <div class="mp-bar-thumb" style="background:#0ea5e9;width:20px;height:20px;border-radius:4px"></div>
+            <div class="mp-bar-info">
+              <div class="mp-bar-song"></div>
+              <div class="mp-bar-artist"></div>
+              <div class="mp-bar-prog"><div class="mp-bar-prog-fill" style="background:#38bdf8"></div></div>
+            </div>
+            <div class="mp-bar-btns">
+              <div class="mp-bar-btn"></div><div class="mp-bar-btn play"></div><div class="mp-bar-btn"></div>
+            </div>
+          </div>
+        </div>
+        <div class="mode-label">Bar — Cyan</div>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- Channel picker -->
+  <div class="card">
+    <div class="card-title">เลือก Channel</div>
+    <div class="ch-list" id="chList">
+      <div class="ch-loading">กำลังโหลด Channel...</div>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="card">
+    <div class="card-title">ตัวอย่างแสดงผล</div>
+    <div class="preview-wrap">
+      <iframe id="previewFrame" src="" scrolling="no" allow="autoplay"></iframe>
+    </div>
+  </div>
+
+  <!-- URL + actions -->
+  <div class="card">
+    <div class="card-title">URL สำหรับ OBS</div>
+    <div class="url-row">
+      <div class="url-box" id="urlBox">–</div>
+      <button class="action-btn primary" onclick="copyUrl()">📋 คัดลอก</button>
+      <button class="action-btn secondary" onclick="openUrl()">🔗 เปิด</button>
+    </div>
+  </div>
+
+  <!-- OBS hint -->
+  <div class="card hint-box">
+    <strong>วิธีใช้ใน OBS:</strong><br>
+    เพิ่ม <strong>Browser Source</strong> → วาง URL ด้านบน → ตั้ง Width/Height ตามแบบที่เลือก<br>
+    เปิด <strong>Custom CSS</strong>: <code style="background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px">body { background: transparent !important; }</code>
+  </div>
+
+  <div id="toast">คัดลอกแล้ว ✓</div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyC95K5rmqsZbmPmSDvgGeWgqbQvOll4X60",
+      authDomain: "tuber-tools-266cb.firebaseapp.com",
+      databaseURL: "https://tuber-tools-266cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tuber-tools-266cb",
+    });
+    const db = firebase.database();
+
+    const BASE_URL = location.origin + '/music-player-display';
+
+    let selectedMode = 'all';
+    let selectedChannelId = '';   // '' = all channels
+    let selectedChannelName = 'ทุก Channel';
+
+    // ── Mode selection ──────────────────────────────────────────────────────
+    function selectMode(btn) {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedMode = btn.dataset.mode;
+      updateAll();
+    }
+
+    // ── Channel selection ───────────────────────────────────────────────────
+    function selectChannel(id, name, btn) {
+      document.querySelectorAll('.ch-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedChannelId = id;
+      selectedChannelName = name;
+      updateAll();
+    }
+
+    // ── Build URL ───────────────────────────────────────────────────────────
+    function buildUrl(preview = false) {
+      const p = new URLSearchParams();
+      p.set('mode', selectedMode);
+      if (selectedChannelId) p.set('channel', selectedChannelId);
+      if (preview) {
+        p.set('preview', '1');
+        p.set('ch', selectedChannelName);
+      }
+      return `${BASE_URL}?${p.toString()}`;
+    }
+
+    // ── Update URL display + preview iframe ─────────────────────────────────
+    function updateAll() {
+      document.getElementById('urlBox').textContent = buildUrl();
+      document.getElementById('previewFrame').src = buildUrl(true);
+    }
+
+    // ── Copy URL ────────────────────────────────────────────────────────────
+    function copyUrl() {
+      const url = buildUrl();
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(showToast);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast();
+      }
+    }
+
+    function openUrl() { window.open(buildUrl(), '_blank'); }
+
+    function showToast() {
+      const t = document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    // ── Load channels from Firebase ─────────────────────────────────────────
+    db.ref('soundboard/channels').once('value', (snap) => {
+      const list = document.getElementById('chList');
+      list.innerHTML = '';
+
+      const allBtn = document.createElement('button');
+      allBtn.className = 'ch-btn active';
+      allBtn.textContent = '🔊 ทุก Channel';
+      allBtn.onclick = () => selectChannel('', 'ทุก Channel', allBtn);
+      list.appendChild(allBtn);
+
+      if (snap.exists()) {
+        const channels = Object.values(snap.val()).sort((a, b) => a.order - b.order);
+        channels.forEach(ch => {
+          const btn = document.createElement('button');
+          btn.className = 'ch-btn';
+          btn.textContent = ch.name;
+          btn.onclick = () => selectChannel(ch.id, ch.name, btn);
+          list.appendChild(btn);
+        });
+      } else {
+        const note = document.createElement('span');
+        note.style.cssText = 'color:#555;font-size:13px';
+        note.textContent = 'ยังไม่มี Channel';
+        list.appendChild(note);
+      }
+
+      updateAll();
+    });
+
+    // Initial render
+    updateAll();
+  </script>
+
+</body>
+</html>

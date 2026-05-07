@@ -1,10 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Image, ScrollView, Pressable } from 'react-native';
-import { CheckCircle, Clock } from 'lucide-react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, Image, ScrollView, Pressable,
+} from 'react-native';
+import { BarChart2, Users, Trophy, ArrowRight } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
+import { useAuth } from '../contexts/AuthContext';
 import { subscribeToUserSelections } from '../services/vtuberDatabaseService';
+import Sidebar from '../components/layout/Sidebar';
+import TopBar from '../components/layout/TopBar';
+
+function AvatarCircle({ imageUrl, name, size = 88, style }) {
+  return (
+    <View style={[{
+      width: size, height: size, borderRadius: size / 2,
+      overflow: 'hidden', backgroundColor: Colors.bg3,
+      justifyContent: 'center', alignItems: 'center',
+    }, style]}>
+      {imageUrl
+        ? <Image source={{ uri: imageUrl }} style={{ width: size, height: size }} />
+        : <Text style={{ color: Colors.fg1, fontSize: size * 0.35, fontWeight: '700' }}>
+          {(name || '?')[0].toUpperCase()}
+        </Text>
+      }
+    </View>
+  );
+}
+
+function StatCard({ icon, label, value }) {
+  return (
+    <View style={styles.statCard}>
+      <View style={styles.statIcon}>{icon}</View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
 
 export default function ResultSelectionScreen({ route, navigation }) {
+  const { user, isAdmin, role } = useAuth();
   const { gameId, character, selectedVTuber, alreadySelected } = route.params || {};
   const [currentSelection, setCurrentSelection] = useState(selectedVTuber);
 
@@ -25,203 +58,318 @@ export default function ResultSelectionScreen({ route, navigation }) {
   }, [gameId, character?.id]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Navbar */}
-      <View style={styles.navbar}>
-        <View style={styles.navInner}>
-          <Text style={styles.navLogo}>12VTuber</Text>
-        </View>
+    <SafeAreaView style={styles.root}>
+      {/* Sidebar */}
+      <Sidebar navigation={navigation} active="games" user={user} isAdmin={isAdmin} role={role} />
+
+      {/* Main */}
+      <View style={styles.main}>
+        <TopBar crumbs={['Games', 'VTuber Draft', 'Result']} navigation={navigation} />
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.centerColumn}>
+
+            {/* Top confirmed tag */}
+            <View style={styles.confirmedTag}>
+              <Text style={styles.confirmedTagText}>PICK CONFIRMED ✓</Text>
+            </View>
+
+            {/* H1 */}
+            {/* <Text style={styles.headline}>
+              You're rolling with {currentSelection?.name || '…'}
+            </Text> */}
+
+            {/* Subtitle */}
+            {/* <Text style={styles.headlineSub}>
+              {alreadySelected
+                ? 'You already locked this pick in earlier.'
+                : `Slot ${route.params?.selectionId ? '#' + route.params.selectionId?.slice(-4) : ''} · Just now`
+              }
+            </Text> */}
+
+            {/* Result Card */}
+            <View style={styles.resultCard}>
+              {/* Avatars row */}
+              <View style={styles.avatarsRow}>
+                {/* Player */}
+                <View style={styles.avatarCol}>
+                  <AvatarCircle
+                    imageUrl={character?.imageUrl}
+                    name={character?.name}
+                    size={88}
+                    style={styles.playerAvatarRing}
+                  />
+                  <Text style={styles.avatarRoleLabel}>YOU</Text>
+                  <Text style={styles.avatarName}>{character?.name}</Text>
+                </View>
+
+                {/* Arrow */}
+                <View style={styles.arrowWrap}>
+                  <Text style={styles.arrowGold}>→</Text>
+                </View>
+
+                {/* VTuber */}
+                <View style={styles.avatarCol}>
+                  <AvatarCircle
+                    imageUrl={currentSelection?.imageUrl}
+                    name={currentSelection?.name}
+                    size={120}
+                    style={styles.vtuberAvatarRing}
+                  />
+                  <View style={styles.backingTag}>
+                    <Text style={styles.backingTagText}>BACKING</Text>
+                  </View>
+                  <Text style={styles.avatarName}>{currentSelection?.name}</Text>
+                  {/* <Text style={styles.avatarId}>#{currentSelection?.id?.slice(-8) || '--------'}</Text> */}
+                </View>
+              </View>
+
+              {/* Divider */}
+              {/* <View style={styles.divider} /> */}
+
+              {/* Stats row */}
+              {/* <View style={styles.statsRow}>
+                <StatCard
+                  icon={<BarChart2 size={16} color={Colors.fg2} strokeWidth={2} />}
+                  label="Win rate"
+                  value="—"
+                />
+                <View style={styles.statDivider} />
+                <StatCard
+                  icon={<Users size={16} color={Colors.fg2} strokeWidth={2} />}
+                  label="Backers"
+                  value="—"
+                />
+                <View style={styles.statDivider} />
+                <StatCard
+                  icon={<Trophy size={16} color={Colors.fg2} strokeWidth={2} />}
+                  label="Rank"
+                  value="—"
+                />
+              </View> */}
+            </View>
+
+            {/* Action buttons */}
+            {/* <View style={styles.actionsRow}>
+              <Pressable
+                style={({ pressed }) => [styles.actionBtn, styles.actionBtnSecondary, pressed && { opacity: 0.7 }]}
+                onPress={() => navigation.navigate('SelectionLog')}
+              >
+                <Text style={styles.actionBtnSecondaryText}>View log</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.actionBtn, styles.actionBtnSecondary, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.actionBtnSecondaryText}>Push to overlay</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.actionBtn, styles.actionBtnPrimary, pressed && { opacity: 0.85 }]}
+                onPress={() => navigation.navigate('SelectGame')}
+              >
+                <Text style={styles.actionBtnPrimaryText}>Back to games</Text>
+              </Pressable>
+            </View> */}
+
+          </View>
+        </ScrollView>
       </View>
-
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Status Card */}
-        <View style={styles.statusCard}>
-          <View style={styles.statusIcon}>
-            {alreadySelected
-              ? <Clock color={Colors.accent} size={36} />
-              : <CheckCircle color="#1DB954" size={36} />
-            }
-          </View>
-          <Text style={styles.statusTitle}>
-            {alreadySelected ? 'เลือกไปแล้ว' : 'บันทึกเรียบร้อย!'}
-          </Text>
-          <Text style={styles.statusDesc}>
-            {alreadySelected
-              ? 'คุณได้ทำการเลือกไปแล้วก่อนหน้านี้'
-              : 'การเลือกของคุณถูกบันทึกแล้ว รอผลได้เลย'}
-          </Text>
-        </View>
-
-        {/* Summary */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>สรุปการเลือก</Text>
-
-          {/* Playing As */}
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>ฉันคือ</Text>
-            <View style={styles.personCard}>
-              <Image source={{ uri: character?.imageUrl }} style={styles.personAvatar} />
-              <Text style={styles.personName}>{character?.name}</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Selected */}
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>ฉันเลือก</Text>
-            <View style={styles.personCard}>
-              <Image source={{ uri: currentSelection?.imageUrl }} style={styles.personAvatar} />
-              <Text style={styles.personName}>{currentSelection?.name}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Info */}
-        <View style={styles.infoBox}>
-          <View style={styles.liveDot} />
-          <Text style={styles.infoText}>ระบบได้บันทึกการเลือกของคุณแล้ว ขอบคุณที่ร่วมสนุก</Text>
-        </View>
-      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-
-  navbar: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
-    backgroundColor: '#181818',
+  root: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: Colors.bg0,
   },
-  navInner: {
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    maxWidth: 900,
-    alignSelf: 'center',
-    width: '100%',
+  main: {
+    flex: 1,
+    flexDirection: 'column',
   },
-  navLogo: { color: Colors.accent, fontSize: 20, fontWeight: 'bold', letterSpacing: 1 },
-
-  scroll: {
-    paddingVertical: 32,
+  scrollContent: {
+    paddingVertical: 40,
     paddingHorizontal: 20,
-    maxWidth: 600,
-    alignSelf: 'center',
+    alignItems: 'center',
+  },
+  centerColumn: {
     width: '100%',
+    maxWidth: 760,
+    alignItems: 'center',
     gap: 16,
   },
 
-  // Status
-  statusCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    padding: 32,
-    alignItems: 'center',
+  // Confirmed tag
+  confirmedTag: {
+    backgroundColor: Colors.accentSoft,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
-    marginBottom: 4,
+    borderColor: Colors.accent + '40',
   },
-  statusIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#242424',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+  confirmedTagText: {
+    color: Colors.accent,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
-  statusTitle: {
-    color: Colors.text,
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 8,
+
+  // Headline
+  headline: {
+    color: Colors.fg0,
+    fontSize: 32,
+    fontWeight: '800',
+    textAlign: 'center',
+    lineHeight: 40,
   },
-  statusDesc: {
-    color: Colors.textSecondary,
+  headlineSub: {
+    color: Colors.fg2,
     fontSize: 14,
     textAlign: 'center',
-    lineHeight: 20,
+    marginBottom: 8,
   },
 
-  // Summary
-  summaryCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 20,
+  // Result card
+  resultCard: {
+    width: '100%',
+    backgroundColor: Colors.bg1,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: Colors.borderSubtle,
+    padding: 28,
+    alignItems: 'center',
   },
-  summaryTitle: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-    fontWeight: 'bold',
+  avatarsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+    marginBottom: 24,
+    flexWrap: 'wrap',
+  },
+  avatarCol: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  playerAvatarRing: {
+    borderWidth: 2,
+    borderColor: Colors.borderDefault,
+  },
+  vtuberAvatarRing: {
+    borderWidth: 2,
+    borderColor: Colors.accent + '80',
+  },
+  arrowWrap: {
+    paddingBottom: 16,
+  },
+  arrowGold: {
+    color: Colors.accent,
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  avatarRoleLabel: {
+    color: Colors.fg3,
+    fontSize: 10,
+    fontWeight: '700',
     letterSpacing: 1,
-    marginBottom: 16,
+    textTransform: 'uppercase',
   },
-  row: {
+  avatarName: {
+    color: Colors.fg0,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    maxWidth: 140,
+  },
+  backingTag: {
+    backgroundColor: Colors.accentSoft,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: Colors.accent + '40',
+  },
+  backingTagText: {
+    color: Colors.accent,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  avatarId: {
+    color: Colors.fg3,
+    fontSize: 10,
+    fontFamily: 'monospace',
+  },
+
+  // Divider
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: Colors.borderSubtle,
+    marginBottom: 20,
+  },
+
+  // Stats
+  statsRow: {
     flexDirection: 'row',
+    width: '100%',
+  },
+  statCard: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
+    gap: 6,
   },
-  rowLabel: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    minWidth: 60,
+  statIcon: {},
+  statValue: {
+    color: Colors.fg0,
+    fontSize: 20,
+    fontWeight: '700',
   },
-  personCard: {
+  statLabel: {
+    color: Colors.fg3,
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: Colors.borderSubtle,
+    marginHorizontal: 8,
+  },
+
+  // Actions
+  actionsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 10,
-    backgroundColor: '#141414',
-    paddingHorizontal: 14,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  actionBtn: {
+    paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
-    flex: 1,
-    marginLeft: 12,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-  },
-  personAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  personName: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#2A2A2A',
-    marginVertical: 4,
-  },
-
-  // Info
-  infoBox: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#1A2A1A',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    justifyContent: 'center',
+  },
+  actionBtnSecondary: {
+    backgroundColor: Colors.bg2,
     borderWidth: 1,
-    borderColor: '#1DB95440',
+    borderColor: Colors.borderDefault,
   },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#1DB954',
+  actionBtnSecondaryText: {
+    color: Colors.fg1,
+    fontSize: 14,
+    fontWeight: '500',
   },
-  infoText: {
-    color: '#1DB954',
-    fontSize: 13,
-    flex: 1,
+  actionBtnPrimary: {
+    backgroundColor: Colors.accent,
+  },
+  actionBtnPrimaryText: {
+    color: Colors.accentFg,
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

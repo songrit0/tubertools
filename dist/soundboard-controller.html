@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Soundboard Controller</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #0f0f13;
+      --surface: #18181f;
+      --surface2: #22222c;
+      --border: #2a2a38;
+      --text: #f0f0f5;
+      --muted: #6b6b85;
+      --accent: #FFD700;
+      --danger: #ef4444;
+      --radius: 12px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      overscroll-behavior: none;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .header-title { font-size: 16px; font-weight: 700; flex: 1; }
+
+    /* Ping badge */
+    .ping-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 72px;
+      justify-content: center;
+    }
+    .ping-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #555;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .ping-dot.good    { background: #22c55e; }
+    .ping-dot.ok      { background: #eab308; }
+    .ping-dot.bad     { background: var(--danger); }
+    .ping-dot.offline { background: #555; }
+    .ping-val { color: var(--text); }
+
+    /* Stop all button */
+    .stop-btn {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px;
+      color: var(--danger);
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .stop-btn:active { background: rgba(239,68,68,0.3); }
+
+    /* ── Channel tabs ── */
+    .tabs-wrap {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex-shrink: 0;
+    }
+    .tabs-wrap::-webkit-scrollbar { display: none; }
+    .tabs {
+      display: flex;
+      padding: 0 10px;
+      gap: 4px;
+      min-width: max-content;
+    }
+    .tab {
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── Button grid ── */
+    .grid-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+    }
+
+    /* Sound button */
+    .sound-btn {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 6px;
+      transition: transform 0.08s, filter 0.08s, border-color 0.15s;
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .sound-btn:active {
+      transform: scale(0.92);
+      filter: brightness(0.85);
+    }
+    .sound-btn.playing {
+      border-color: rgba(255,255,255,0.6);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
+      50%       { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+    }
+
+    .sound-btn .btn-icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+    .sound-btn .btn-name {
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      color: rgba(255,255,255,0.9);
+      word-break: break-word;
+      line-height: 1.3;
+      max-width: 100%;
+    }
+
+    /* Ripple effect */
+    .sound-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      border-radius: inherit;
+      transition: background 0.3s;
+    }
+    .sound-btn.ripple::after {
+      background: rgba(255,255,255,0.15);
+      transition: none;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── Loading overlay ── */
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      z-index: 100;
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--muted); font-size: 14px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 200;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── LAN hint (bottom bar) ── */
+    .lan-bar {
+      background: rgba(255,215,0,0.06);
+      border-top: 1px solid rgba(255,215,0,0.15);
+      padding: 7px 14px;
+      font-size: 11px;
+      color: #8a7a00;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .lan-bar strong { color: #c9a800; }
+    .lan-ip { margin-left: auto; font-family: monospace; font-size: 11px; color: #a09000; }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">กำลังเชื่อมต่อ...</div>
+</div>
+
+<div class="layout">
+  <header>
+    <div class="header-title">🎵 Soundboard</div>
+    <div class="ping-badge" id="pingBadge">
+      <div class="ping-dot offline" id="pingDot"></div>
+      <span class="ping-val" id="pingVal">–</span>
+    </div>
+    <button class="stop-btn" id="stopBtn">⏹ Stop</button>
+  </header>
+
+  <div class="tabs-wrap">
+    <div class="tabs" id="tabs"></div>
+  </div>
+
+  <div class="grid-scroll">
+    <div class="btn-grid" id="btnGrid"></div>
+  </div>
+
+  <div class="lan-bar">
+    <strong>LAN:</strong> เปิดหน้านี้บนมือถือที่อยู่ Wi-Fi เดียวกัน หรือแชร์ URL ด้านล่าง
+    <span class="lan-ip" id="lanUrl"></span>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+  const FB_CONFIG = {
+    apiKey: "AIzaSyC95K5rmqsZbmPmSDvgGeWgqbQvOll4X60",
+    authDomain: "tuber-tools-266cb.firebaseapp.com",
+    databaseURL: "https://tuber-tools-266cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "tuber-tools-266cb",
+    storageBucket: "tuber-tools-266cb.firebasestorage.app",
+    messagingSenderId: "519614170930",
+    appId: "1:519614170930:web:243813c3bcba9df196b92b",
+  };
+  firebase.initializeApp(FB_CONFIG);
+  const db = firebase.database();
+
+  // ── LAN URL ─────────────────────────────────────────────────────────────────
+  document.getElementById('lanUrl').textContent = location.href;
+
+  // ── Ping ────────────────────────────────────────────────────────────────────
+  let pingHistory = [];
+
+  function updatePingUI(ms) {
+    const dot = document.getElementById('pingDot');
+    const val = document.getElementById('pingVal');
+    val.textContent = ms + 'ms';
+    dot.className = 'ping-dot ' + (ms < 80 ? 'good' : ms < 200 ? 'ok' : 'bad');
+  }
+
+  async function doPing() {
+    try {
+      const t0 = Date.now();
+      await db.ref('_ping').set(t0);
+      const rtt = Date.now() - t0;
+      pingHistory.push(rtt);
+      if (pingHistory.length > 5) pingHistory.shift();
+      const avg = Math.round(pingHistory.reduce((a, b) => a + b, 0) / pingHistory.length);
+      updatePingUI(avg);
+    } catch {
+      document.getElementById('pingDot').className = 'ping-dot offline';
+      document.getElementById('pingVal').textContent = 'offline';
+    }
+  }
+
+  // Monitor connection state
+  db.ref('.info/connected').on('value', (snap) => {
+    if (!snap.val()) {
+      document.getElementById('pingDot').className = 'ping-dot offline';
+      document.getElementById('pingVal').textContent = 'offline';
+    }
+  });
+
+  doPing();
+  setInterval(doPing, 4000);
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  let channels = [];
+  let activeChannelId = null;
+  let buttons = [];
+  let playingSet = new Set();
+  let btnUnsub = null;
+
+  // ── Trigger play (push to queue) ─────────────────────────────────────────────
+  async function triggerPlay(button) {
+    const t0 = Date.now();
+    await db.ref('soundboard/queue').push({
+      buttonId: button.id,
+      channelId: button.channelId,
+      action: 'play',
+      soundUrl: button.soundSource?.url || '',
+      volume: button.volume ?? 1,
+      loop: button.loop ?? false,
+      stopOnNew: button.stopOnNew ?? false,
+      buttonName: button.name || '',
+      buttonColor: button.color || '#5b8de8',
+      channelName: channels.find(c => c.id === button.channelId)?.name || '',
+      triggeredAt: new Date().toISOString(),
+    });
+    const rtt = Date.now() - t0;
+    pingHistory.push(rtt);
+    if (pingHistory.length > 5) pingHistory.shift();
+    updatePingUI(Math.round(pingHistory.reduce((a, b) => a + b, 0) / pingHistory.length));
+  }
+
+  async function triggerStop() {
+    await db.ref('soundboard/stopSignal').set({
+      action: 'stop_all',
+      triggeredAt: new Date().toISOString(),
+    });
+    playingSet.clear();
+    renderButtons();
+  }
+
+  document.getElementById('stopBtn').onclick = triggerStop;
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  function darken(hex, amount = 40) {
+    const n = parseInt(hex.replace('#',''), 16);
+    const r = Math.max(0, (n >> 16) - amount);
+    const g = Math.max(0, ((n >> 8) & 0xff) - amount);
+    const b = Math.max(0, (n & 0xff) - amount);
+    return '#' + [r, g, b].map(v => v.toString(16).padStart(2,'0')).join('');
+  }
+
+  function renderButtons() {
+    const grid = document.getElementById('btnGrid');
+    grid.innerHTML = '';
+    if (!buttons.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-icon">🔇</div>
+        <p>ยังไม่มีปุ่มใน Channel นี้</p>
+      </div>`;
+      return;
+    }
+    buttons.forEach(btn => {
+      const el = document.createElement('button');
+      el.className = 'sound-btn' + (playingSet.has(btn.id) ? ' playing' : '');
+      const bg = btn.color || '#2a2a2a';
+      const dark = darken(bg, 30);
+      el.style.background = `linear-gradient(135deg, ${bg}, ${dark})`;
+      el.innerHTML = `
+        <div class="btn-icon">🔊</div>
+        <div class="btn-name">${btn.name || '—'}</div>
+      `;
+
+      // Press feedback + play
+      el.addEventListener('pointerdown', async (e) => {
+        e.preventDefault();
+        el.classList.add('ripple');
+        setTimeout(() => el.classList.remove('ripple'), 300);
+
+        // Haptic on mobile
+        if (navigator.vibrate) navigator.vibrate(30);
+
+        // Mark as playing
+        if (!btn.loop) {
+          playingSet.add(btn.id);
+          el.classList.add('playing');
+          setTimeout(() => {
+            playingSet.delete(btn.id);
+            el.classList.remove('playing');
+          }, 3000);
+        } else {
+          playingSet.add(btn.id);
+          el.classList.add('playing');
+        }
+
+        await triggerPlay(btn);
+      });
+
+      grid.appendChild(el);
+    });
+  }
+
+  function renderTabs() {
+    const tabsEl = document.getElementById('tabs');
+    tabsEl.innerHTML = '';
+    channels.forEach(ch => {
+      const tab = document.createElement('button');
+      tab.className = 'tab' + (ch.id === activeChannelId ? ' active' : '');
+      tab.textContent = ch.name;
+      tab.onclick = () => selectChannel(ch.id);
+      tabsEl.appendChild(tab);
+    });
+  }
+
+  function selectChannel(id) {
+    activeChannelId = id;
+    renderTabs();
+    loadButtons(id);
+  }
+
+  function loadButtons(channelId) {
+    if (btnUnsub) btnUnsub();
+    buttons = [];
+    renderButtons();
+    btnUnsub = db.ref(`soundboard/buttons/${channelId}`).on('value', (snap) => {
+      if (!snap.exists()) { buttons = []; }
+      else { buttons = Object.values(snap.val()); }
+      renderButtons();
+    });
+  }
+
+  // ── Load channels ────────────────────────────────────────────────────────────
+  db.ref('soundboard/channels').on('value', (snap) => {
+    if (!snap.exists()) { channels = []; renderTabs(); return; }
+    channels = Object.values(snap.val()).sort((a, b) => a.order - b.order);
+    renderTabs();
+    if (!activeChannelId && channels.length > 0) {
+      selectChannel(channels[0].id);
+    }
+    document.getElementById('loadingOverlay').style.display = 'none';
+  });
+
+  // ── Toast helper ─────────────────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  // ── Prevent pull-to-refresh on mobile ────────────────────────────────────────
+  document.addEventListener('touchmove', e => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+</script>
+
+</body>
+</html>

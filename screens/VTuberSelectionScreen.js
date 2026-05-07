@@ -2,20 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Pressable,
   Image, ActivityIndicator, SafeAreaView,
+  useWindowDimensions,
 } from 'react-native';
-import { ChevronLeft, List, Database } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
-import { useResponsive } from '../hooks/useResponsive';
-import { getNumColumns } from '../theme/responsive';
 import { shuffleArray } from '../utils/arrayUtils';
 import SelectionModal from '../components/SelectionModal';
 import { subscribeToVtubers, addCharacterInUse, subscribeToVtubersInUse } from '../services/vtuberDatabaseService';
 import { useAuth } from '../contexts/AuthContext';
+import Sidebar from '../components/layout/Sidebar';
+import TopBar from '../components/layout/TopBar';
 
 export default function VTuberSelectionScreen({ route, navigation }) {
-  const responsive = useResponsive();
-  const { isAdmin } = useAuth();
+  const { width } = useWindowDimensions();
+  const { user, isAdmin, role } = useAuth();
   const { gameId } = route.params || {};
+
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [characters, setCharacters] = useState([]);
@@ -23,10 +24,9 @@ export default function VTuberSelectionScreen({ route, navigation }) {
   const [vtubersInUse, setVtubersInUse] = useState([]);
   const orderRef = useRef(null);
 
-  const numColumns = getNumColumns(responsive.width);
+  const numColumns = width >= 1200 ? 6 : width >= 900 ? 5 : width >= 640 ? 4 : 3;
 
   useEffect(() => {
-    // Real-time listener for characters
     const unsubscribeCharacters = subscribeToVtubers((vtubersData) => {
       if (!orderRef.current) {
         const shuffled = shuffleArray(vtubersData);
@@ -65,10 +65,6 @@ export default function VTuberSelectionScreen({ route, navigation }) {
     navigation.navigate('SelectVTuber', { gameId, character: selectedCharacter });
   };
 
-  const handleCancel = () => {
-    setModalVisible(false);
-  };
-
   const renderCharacter = ({ item }) => {
     const isInUse = vtubersInUse.includes(item.id);
     return (
@@ -82,14 +78,21 @@ export default function VTuberSelectionScreen({ route, navigation }) {
         disabled={isInUse}
       >
         <View style={[styles.avatarWrapper, isInUse && styles.avatarDisabled]}>
-          <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
+          {item.imageUrl
+            ? <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
+            : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text style={styles.avatarFallbackText}>{(item.name || '?')[0]}</Text>
+              </View>
+            )
+          }
         </View>
-        <Text style={[styles.nameText, isInUse && styles.nameDisabled]} numberOfLines={1}>
+        <Text style={[styles.nameText, isInUse && styles.nameDisabled]} numberOfLines={2}>
           {item.name}
         </Text>
         {isInUse && (
-          <View style={styles.selectedBadge}>
-            <Text style={styles.selectedBadgeText}>เลือกแล้ว</Text>
+          <View style={styles.inUseBadge}>
+            <Text style={styles.inUseBadgeText}>เลือกแล้ว</Text>
           </View>
         )}
       </Pressable>
@@ -97,144 +100,109 @@ export default function VTuberSelectionScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Navbar */}
-      <View style={styles.navbar}>
-        <View style={styles.navInner}>
-          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <ChevronLeft color={Colors.text} size={20} />
-            <Text style={styles.backText}>กลับ</Text>
-          </Pressable>
-          <Text style={styles.navTitle}>WHO ARE YOU?</Text>
-          {isAdmin && (
-            <View style={styles.navBtns}>
-              <Pressable style={styles.logBtn} onPress={() => navigation.navigate('AdminData')}>
-                <Database color={Colors.textSecondary} size={18} />
-              </Pressable>
-              <Pressable style={styles.logBtn} onPress={() => navigation.navigate('SelectionLog')}>
-                <List color={Colors.textSecondary} size={18} />
-              </Pressable>
-            </View>
-          )}
-        </View>
-      </View>
+    <SafeAreaView style={styles.root}>
+      <Sidebar navigation={navigation} active="games" user={user} isAdmin={isAdmin} role={role} />
 
-      {/* Page Header */}
-      <View style={styles.pageHeader}>
-        <Text style={styles.pageTitle}>เลือกตัวละครของคุณ</Text>
-        <Text style={styles.pageSubtitle}>คุณเป็นใครใน 12VTuber?</Text>
-      </View>
+      <View style={styles.main}>
+        <TopBar crumbs={['Games', '12VTuber', 'เลือกตัวละคร']} live navigation={navigation} />
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.accent} />
-          <Text style={styles.loadingText}>กำลังโหลด...</Text>
+        <View style={styles.pageHeader}>
+          <View>
+            <Text style={styles.pageTitle}>คุณเป็นใคร?</Text>
+            <Text style={styles.pageSubtitle}>เลือกตัวละครของคุณใน 12VTuber Draft Pick</Text>
+          </View>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>
+              {vtubersInUse.length} / {characters.length} เลือกแล้ว
+            </Text>
+          </View>
         </View>
-      ) : (
-        <FlatList
-          data={characters}
-          renderItem={renderCharacter}
-          keyExtractor={(item) => item.id}
-          numColumns={numColumns}
-          key={numColumns}
-          contentContainerStyle={styles.grid}
-          columnWrapperStyle={styles.row}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>ไม่พบตัวละคร</Text>
-          }
-        />
-      )}
+
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.accent} />
+            <Text style={styles.loadingText}>กำลังโหลด...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={characters}
+            renderItem={renderCharacter}
+            keyExtractor={(item) => item.id}
+            numColumns={numColumns}
+            key={numColumns}
+            contentContainerStyle={styles.grid}
+            columnWrapperStyle={styles.gridRow}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>ไม่พบตัวละคร</Text>
+            }
+          />
+        )}
+      </View>
 
       <SelectionModal
         visible={modalVisible}
         vtuber={selectedCharacter}
         onConfirm={confirmSelection}
-        onCancel={handleCancel}
+        onCancel={() => setModalVisible(false)}
       />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-
-  navbar: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
-    backgroundColor: '#181818',
-  },
-  navInner: {
+  root: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    maxWidth: 1400,
-    alignSelf: 'center',
-    width: '100%',
+    backgroundColor: Colors.bg0,
   },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#242424',
-    minWidth: 70,
-  },
-  backText: {
-    color: Colors.text,
-    fontSize: 13,
-  },
-  navBtns: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  logBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#242424',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  navTitle: {
-    color: Colors.text,
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+  main: {
+    flex: 1,
+    flexDirection: 'column',
   },
 
   pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingTop: 28,
+    paddingTop: 24,
     paddingBottom: 20,
-    maxWidth: 1400,
-    alignSelf: 'center',
-    width: '100%',
+    flexWrap: 'wrap',
+    gap: 12,
   },
   pageTitle: {
-    color: Colors.text,
-    fontSize: 24,
-    fontWeight: 'bold',
+    color: Colors.fg0,
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   pageSubtitle: {
-    color: Colors.textSecondary,
+    color: Colors.fg2,
     fontSize: 13,
     marginTop: 4,
+  },
+  countBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: Colors.bg2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  countText: {
+    color: Colors.fg2,
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'monospace',
   },
 
   grid: {
     paddingHorizontal: 20,
     paddingBottom: 40,
-    maxWidth: 1400,
-    alignSelf: 'center',
-    width: '100%',
   },
-  row: {
-    gap: 12,
-    marginBottom: 12,
+  gridRow: {
+    gap: 10,
+    marginBottom: 10,
   },
 
   card: {
@@ -243,33 +211,68 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 8,
     borderRadius: 14,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: Colors.bg1,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: Colors.borderSubtle,
+    gap: 6,
   },
   cardPressed: {
-    backgroundColor: '#242424',
-    borderColor: Colors.accent,
+    backgroundColor: Colors.bg2,
+    borderColor: Colors.accent + '88',
   },
+  cardDisabled: {
+    opacity: 0.45,
+  },
+
   avatarWrapper: {
     width: 72,
     height: 72,
     borderRadius: 36,
     overflow: 'hidden',
-    backgroundColor: Colors.cardBg,
-    marginBottom: 10,
+    backgroundColor: Colors.bg3,
     borderWidth: 2,
-    borderColor: '#333',
+    borderColor: Colors.borderDefault,
+  },
+  avatarDisabled: {
+    borderColor: Colors.borderSubtle,
   },
   avatar: {
     width: '100%',
     height: '100%',
   },
+  avatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarFallbackText: {
+    color: Colors.fg1,
+    fontSize: 24,
+    fontWeight: '700',
+  },
+
   nameText: {
-    color: Colors.text,
+    color: Colors.fg0,
     fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
+    lineHeight: 15,
+  },
+  nameDisabled: {
+    color: Colors.fg3,
+  },
+
+  inUseBadge: {
+    backgroundColor: Colors.redSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.red + '40',
+  },
+  inUseBadgeText: {
+    color: Colors.red,
+    fontSize: 9,
+    fontWeight: '700',
   },
 
   loadingContainer: {
@@ -279,35 +282,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    color: Colors.textSecondary,
+    color: Colors.fg2,
     fontSize: 14,
   },
   emptyText: {
-    color: Colors.textSecondary,
+    color: Colors.fg2,
     textAlign: 'center',
     marginTop: 40,
-  },
-
-  cardDisabled: {
-    opacity: 0.5,
-    borderColor: '#333',
-  },
-  avatarDisabled: {
-    borderColor: '#555',
-  },
-  nameDisabled: {
-    color: Colors.textSecondary,
-  },
-  selectedBadge: {
-    marginTop: 6,
-    backgroundColor: '#FF4444',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  selectedBadgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

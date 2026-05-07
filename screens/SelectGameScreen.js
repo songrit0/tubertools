@@ -1,41 +1,33 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
   Pressable,
   Linking,
   Platform,
-  Image,
+  Animated,
+  useWindowDimensions,
 } from 'react-native';
-import { LogOut, Users } from 'lucide-react-native';
+import { Settings, Play, Filter } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
-import { useResponsive } from '../hooks/useResponsive';
 import { useAuth } from '../contexts/AuthContext';
-
-const AVATAR_COLORS = [
-  '#E74C3C', '#E67E22', '#F1C40F', '#2ECC71',
-  '#1ABC9C', '#3498DB', '#9B59B6', '#E91E63',
-];
-
-function getAvatarColor(email) {
-  let hash = 0;
-  for (let i = 0; i < (email || '').length; i++) hash = email.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
+import Sidebar from '../components/layout/Sidebar';
+import TopBar from '../components/layout/TopBar';
 
 const GAMES = [
   {
     id: '12vtuber',
     title: '12VTuber',
-    description: 'ศึก 12 VTuber',
+    description: 'ศึก 12 VTuber Draft Pick สำหรับ Live Stream',
     emoji: '🗿',
     screen: 'VTuberSelection',
     tag: 'LIVE',
     isUse: true,
+    coverGradient: ['#1A1200', '#2A1F00'],
+    stats: { players: 12, sessions: 0 },
   },
   {
     id: 'domino',
@@ -45,294 +37,431 @@ const GAMES = [
     tag: 'NEW',
     isUse: true,
     isExternal: true,
-  },
-  {
-    id: 'soundboard',
-    title: 'Soundboard',
-    description: 'ปุ่มเสียงสำหรับ Stream ส่งไปเล่นที่ OBS',
-    emoji: '🔊',
-    screen: 'SoundBoard',
-    tag: 'NEW',
-    isUse: true,
+    coverGradient: ['#001020', '#001830'],
+    stats: { players: 4, sessions: 0 },
   },
 ];
 
-export default function SelectGameScreen({ navigation }) {
-  const responsive = useResponsive();
-  const isWide = responsive.width >= 768;
-  const { signOut, user, isAdmin } = useAuth();
-
-  const email = user?.email || '';
-  const initial = (user?.displayName || email || '?')[0].toUpperCase();
-  const avatarColor = getAvatarColor(email);
-
-  const renderGame = ({ item }) => (
-    <Pressable
-      style={({ pressed }) => [
-        styles.gameCard,
-        isWide && styles.gameCardWide,
-        !item.isUse && styles.gameCardDisabled,
-        item.isUse && pressed && styles.gameCardPressed,
-      ]}
-      onPress={() => {
-        if (!item.isUse) return;
-        if (item.isExternal) {
-          const baseUrl = Platform.OS === 'web'
-            ? `${window.location.origin}/${item.id}.html`
-            : `https://tuber-tools-266cb.web.app/${item.id}.html`;
-          if (Platform.OS === 'web') {
-            window.open(baseUrl, '_blank');
-          } else {
-            Linking.openURL(baseUrl);
-          }
-        } else {
-          navigation.navigate(item.screen, { gameId: item.id });
-        }
-      }}
-      disabled={!item.isUse}
-    >
-      <View style={styles.gameCardLeft}>
-        <Text style={styles.gameEmoji}>{item.emoji}</Text>
-      </View>
-      <View style={styles.gameCardBody}>
-        <View style={styles.gameTitleRow}>
-          <Text style={styles.gameTitle}>{item.title}</Text>
-          {item.tag && (
-            <View style={styles.tagBadge}>
-              <Text style={styles.tagText}>{item.tag}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.gameDesc}>{item.description}</Text>
-        {!item.isUse && (
-          <Text style={styles.disabledText}>ระบบกำลังปิดใช้งาน</Text>
-        )}
-      </View>
-      <Text style={styles.chevron}>›</Text>
-    </Pressable>
-  );
+function LivePill() {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Navbar */}
-      <View style={styles.navbar}>
-        <View style={styles.navInner}>
-          <Text style={styles.navLogo}>tuber-tools</Text>
-          <View style={styles.navActions}>
-            {isAdmin && (
-              <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('AdminUsers')}>
-                <Users color={Colors.textSecondary} size={18} />
-                {isWide && <Text style={styles.navBtnText}>Users</Text>}
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
-              {user?.photoURL ? (
-                <Image source={{ uri: user.photoURL }} style={styles.profileAvatar} />
-              ) : (
-                <View style={[styles.profileAvatar, styles.profileAvatarFallback, { backgroundColor: avatarColor }]}>
-                  <Text style={styles.profileInitial}>{initial}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.navBtn, styles.logoutBtn]} onPress={signOut}>
-              <LogOut color="#FF4444" size={18} />
-              {isWide && <Text style={styles.logoutBtnText}>Logout</Text>}
-            </TouchableOpacity>
+    <View style={cardStyles.livePill}>
+      <Animated.View style={[cardStyles.liveDot, { opacity: pulseAnim }]} />
+      <Text style={cardStyles.livePillText}>LIVE</Text>
+    </View>
+  );
+}
+
+function GameCard({ item, onPress, onSettings }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        cardStyles.card,
+        pressed && cardStyles.cardPressed,
+      ]}
+      onPress={onPress}
+    >
+      {/* Cover area */}
+      <View style={[cardStyles.cover, { backgroundColor: item.coverGradient ? item.coverGradient[0] : Colors.bg3 }]}>
+        <Text style={cardStyles.coverEmoji}>{item.emoji}</Text>
+        {item.tag === 'LIVE' && <LivePill />}
+      </View>
+
+      {/* Card body */}
+      <View style={cardStyles.body}>
+        <View style={cardStyles.titleRow}>
+          <Text style={cardStyles.title}>{item.title}</Text>
+          <View style={[cardStyles.tagBadge, item.tag === 'LIVE' ? cardStyles.tagLive : cardStyles.tagNew]}>
+            <Text style={[cardStyles.tagText, item.tag === 'LIVE' ? cardStyles.tagLiveText : cardStyles.tagNewText]}>
+              installed
+            </Text>
           </View>
         </View>
-      </View>
+        <Text style={cardStyles.desc} numberOfLines={2}>{item.description}</Text>
 
-      {/* Content */}
-      <View style={styles.content}>
-        <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>SELECT GAME</Text>
-          <Text style={styles.pageSubtitle}>เลือกเกมที่ต้องการเล่น</Text>
+        {/* Stats row */}
+        <View style={cardStyles.statsRow}>
+          <View style={cardStyles.statItem}>
+            <Text style={cardStyles.statValue}>{item.stats?.players ?? '-'}</Text>
+            <Text style={cardStyles.statLabel}>Players</Text>
+          </View>
+          <View style={cardStyles.statDivider} />
+          <View style={cardStyles.statItem}>
+            <Text style={cardStyles.statValue}>{item.stats?.sessions ?? 0}</Text>
+            <Text style={cardStyles.statLabel}>Sessions</Text>
+          </View>
         </View>
 
-        <FlatList
-          data={GAMES}
-          renderItem={renderGame}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          scrollEnabled={false}
-        />
+        {/* Action buttons */}
+        <View style={cardStyles.actions}>
+          <TouchableOpacity style={cardStyles.launchBtn} onPress={onPress}>
+            <Play size={13} color={Colors.accentFg} />
+            <Text style={cardStyles.launchBtnText}>Launch</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={cardStyles.settingsBtn} onPress={onSettings}>
+            <Settings size={15} color={Colors.fg2} />
+          </TouchableOpacity>
+        </View>
       </View>
-    </SafeAreaView>
+    </Pressable>
+  );
+}
+
+export default function SelectGameScreen({ navigation }) {
+  const { width } = useWindowDimensions();
+  const isWide = width >= 900;
+  const { signOut, user, isAdmin, role } = useAuth();
+
+  const installedGames = GAMES.filter(g => g.isUse);
+  const numCols = isWide ? 3 : 1;
+
+  const handleGamePress = (item) => {
+    if (!item.isUse) return;
+    if (item.isExternal) {
+      const baseUrl = Platform.OS === 'web'
+        ? `${window.location.origin}/${item.id}.html`
+        : `https://tuber-tools-266cb.web.app/${item.id}.html`;
+      if (Platform.OS === 'web') {
+        window.open(baseUrl, '_blank');
+      } else {
+        Linking.openURL(baseUrl);
+      }
+    } else {
+      navigation.navigate(item.screen, { gameId: item.id });
+    }
+  };
+
+  return (
+    <View style={styles.root}>
+      {/* Sidebar */}
+      <Sidebar navigation={navigation} active="games" user={user} isAdmin={isAdmin} role={role} />
+
+      {/* Main area */}
+      <View style={styles.main}>
+        {/* TopBar */}
+        <TopBar crumbs={['Games']} navigation={navigation} />
+
+        {/* Scrollable content */}
+        <ScrollView
+          style={styles.scrollArea}
+          contentContainerStyle={styles.contentContainer}
+        >
+          {/* Page header */}
+          <View style={styles.pageHeader}>
+            <View style={styles.pageHeaderLeft}>
+              <Text style={styles.pageTitle}>Choose a game</Text>
+              <Text style={styles.pageSub}>Select a tool to launch for your stream.</Text>
+            </View>
+          </View>
+
+          {/* Toolbar row */}
+          <View style={styles.toolbar}>
+            <View style={styles.toolbarLeft}>
+              <View style={styles.installedBadge}>
+                <Text style={styles.installedBadgeText}>INSTALLED · {installedGames.length}</Text>
+              </View>
+            </View>
+            <View style={styles.toolbarRight}>
+              <TouchableOpacity style={styles.filterBtn}>
+                <Filter size={14} color={Colors.fg2} />
+                <Text style={styles.filterBtnText}>Filter</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Cards grid */}
+          <View style={[styles.grid, numCols > 1 && styles.gridWide]}>
+            {installedGames.map((item) => (
+              <View key={item.id} style={[styles.gridCell, numCols > 1 && styles.gridCellWide]}>
+                <GameCard
+                  item={item}
+                  onPress={() => handleGamePress(item)}
+                  onSettings={() => {}}
+                />
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: Colors.background,
-  },
-  // Navbar
-  navbar: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
-    backgroundColor: '#181818',
-  },
-  navInner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    maxWidth: 1200,
-    alignSelf: 'center',
-    width: '100%',
+    backgroundColor: Colors.bg0,
   },
-  navLogo: {
-    color: Colors.accent,
-    fontSize: 20,
+  main: {
+    flex: 1,
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  scrollArea: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 40,
+  },
+
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  pageHeaderLeft: {
+    flex: 1,
+  },
+  pageTitle: {
+    color: Colors.fg0,
+    fontSize: 24,
     fontWeight: 'bold',
+    letterSpacing: -0.5,
+  },
+  pageSub: {
+    color: Colors.fg2,
+    fontSize: 13,
+    marginTop: 4,
+  },
+
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  toolbarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  toolbarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  installedBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: Colors.bg3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  installedBadgeText: {
+    color: Colors.fg3,
+    fontSize: 11,
+    fontWeight: '700',
     letterSpacing: 1,
   },
-  navActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  navBtn: {
+  filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 8,
-    backgroundColor: '#242424',
-  },
-  navBtnText: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-  },
-  logoutBtn: {
     borderWidth: 1,
-    borderColor: '#FF444440',
-    backgroundColor: '#FF444415',
+    borderColor: Colors.borderDefault,
+    backgroundColor: Colors.bg2,
   },
-  logoutBtnText: {
-    color: '#FF4444',
+  filterBtnText: {
+    color: Colors.fg2,
     fontSize: 13,
+    fontWeight: '500',
   },
-  profileBtn: {
-    padding: 2,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: Colors.accent + '60',
-  },
-  profileAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  profileAvatarFallback: {
-    justifyContent: 'center',
+  addBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: Colors.accent,
   },
-  profileInitial: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
+  addBtnText: {
+    color: Colors.accentFg,
+    fontSize: 13,
+    fontWeight: '700',
   },
-  // Content
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    maxWidth: 900,
-    alignSelf: 'center',
+
+  grid: {
+    gap: 14,
+  },
+  gridWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  gridCell: {
     width: '100%',
   },
-  pageHeader: {
-    marginBottom: 32,
+  gridCellWide: {
+    width: '31.5%',
+    flexShrink: 1,
+    flexGrow: 0,
   },
-  pageTitle: {
-    color: Colors.text,
-    fontSize: 32,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-  },
-  pageSubtitle: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    marginTop: 6,
-  },
-  listContainer: {
-    gap: 12,
-  },
-  // Game Card
-  gameCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 20,
+});
+
+const cardStyles = StyleSheet.create({
+  card: {
+    backgroundColor: Colors.bg1,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
-    gap: 16,
-  },
-  gameCardWide: {
-    padding: 24,
-  },
-  gameCardPressed: {
-    backgroundColor: '#222222',
-    borderColor: Colors.accent,
-  },
-  gameCardDisabled: {
-    opacity: 0.4,
-  },
-  disabledText: {
-    color: '#FF4444',
-    fontSize: 11,
-    marginTop: 4,
-  },
-  gameCardLeft: {
-    width: 56,
-    height: 56,
+    borderColor: Colors.borderSubtle,
     borderRadius: 14,
-    backgroundColor: '#242424',
+    overflow: 'hidden',
+  },
+  cardPressed: {
+    borderColor: Colors.accent + '55',
+    backgroundColor: Colors.bg2,
+  },
+
+  cover: {
+    height: 140,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
-  gameEmoji: {
-    fontSize: 28,
+  coverEmoji: {
+    fontSize: 44,
   },
-  gameCardBody: {
-    flex: 1,
-  },
-  gameTitleRow: {
+  livePill: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 4,
+    gap: 5,
+    backgroundColor: 'rgba(255,71,87,0.18)',
+    borderWidth: 1,
+    borderColor: Colors.live,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
   },
-  gameTitle: {
-    color: Colors.text,
-    fontSize: 18,
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.live,
+  },
+  livePillText: {
+    color: Colors.live,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+
+  body: {
+    padding: 16,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 5,
+  },
+  title: {
+    color: Colors.fg0,
+    fontSize: 15,
     fontWeight: 'bold',
   },
   tagBadge: {
-    backgroundColor: '#1DB95420',
-    borderWidth: 1,
-    borderColor: '#1DB954',
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 5,
+    borderWidth: 1,
+  },
+  tagLive: {
+    backgroundColor: Colors.accentSoft,
+    borderColor: Colors.accent + '55',
+  },
+  tagNew: {
+    backgroundColor: 'rgba(74,222,128,0.10)',
+    borderColor: '#4ADE8055',
   },
   tagText: {
-    color: '#1DB954',
     fontSize: 10,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  gameDesc: {
-    color: Colors.textSecondary,
-    fontSize: 13,
+  tagLiveText: {
+    color: Colors.accent,
+  },
+  tagNewText: {
+    color: Colors.green,
+  },
+  desc: {
+    color: Colors.fg2,
+    fontSize: 12,
     lineHeight: 18,
+    marginBottom: 12,
   },
-  chevron: {
-    color: Colors.textSecondary,
-    fontSize: 28,
-    fontWeight: '300',
+
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    color: Colors.fg0,
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  statLabel: {
+    color: Colors.fg3,
+    fontSize: 10,
+    marginTop: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: Colors.borderSubtle,
+  },
+
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  launchBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: Colors.accent,
+  },
+  launchBtnText: {
+    color: Colors.accentFg,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  settingsBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderDefault,
+    backgroundColor: Colors.bg3,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

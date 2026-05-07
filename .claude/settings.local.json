@@ -15,7 +15,17 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\MARU\\\\12vtuber\" -Recurse -Directory)",
       "Bash(Select-Object -First 20)",
       "Bash(npx firebase *)",
-      "Bash(Write-Host \"Done deleting files\")"
+      "Bash(Write-Host \"Done deleting files\")",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in ['dependencies','devDependencies'] if k in d}, indent=2\\)\\)\")",
+      "Bash(npm install *)",
+      "Bash(firebase deploy *)",
+      "PowerShell(Get-Command firebase -ErrorAction SilentlyContinue)",
+      "PowerShell(npx firebase --version 2>&1)",
+      "PowerShell(npm list -g firebase-tools 2>&1)",
+      "PowerShell(npm install -g firebase-tools 2>&1)",
+      "PowerShell(firebase login --reauth 2>&1)",
+      "PowerShell(firebase projects:list 2>&1)"
     ]
   }
 }

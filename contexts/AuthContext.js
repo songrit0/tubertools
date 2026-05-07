@@ -1,23 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { subscribeToAuthState, logout } from '../services/authService';
-import { saveUserToDatabase, checkIsAdmin } from '../services/userService';
+import { subscribeToAuthState, logout, reloadUser } from '../services/authService';
+import { saveUserToDatabase, getUserRole } from '../services/userService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState('user');
 
   useEffect(() => {
     const unsubscribe = subscribeToAuthState(async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
         saveUserToDatabase(firebaseUser);
-        const admin = await checkIsAdmin(firebaseUser.uid);
-        setIsAdmin(admin);
+        const r = await getUserRole(firebaseUser.uid);
+        setRole(r);
       } else {
-        setIsAdmin(false);
+        setRole('user');
       }
       setLoading(false);
     });
@@ -28,8 +28,16 @@ export function AuthProvider({ children }) {
     await logout();
   };
 
+  const refreshUser = async () => {
+    const fresh = await reloadUser();
+    if (fresh) setUser({ ...fresh });
+  };
+
+  const isAdmin = role === 'admin';
+  const isMod = role === 'mod' || role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, loading, role, isAdmin, isMod, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
