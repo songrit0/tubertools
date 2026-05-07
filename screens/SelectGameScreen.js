@@ -38,15 +38,6 @@ const GAMES = [
     isUse: true,
   },
   {
-    id: 'monopoly',
-    title: 'เศรษฐี',
-    description: 'เกมเศรษฐี Monopoly Online 2-4 คน',
-    emoji: '🎲',
-    screen: 'MonopolyLobby',
-    tag: 'NEW',
-    isUse: false,
-  },
-  {
     id: 'domino',
     title: 'โดมิโน่',
     description: 'เกมโดมิโน่ออนไลน์ แบบบอร์ดเกม',

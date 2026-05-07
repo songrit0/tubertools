@@ -16,9 +16,6 @@ import GameBoardScreen from '../screens/GameBoardScreen';
 import AdminDataScreen from '../screens/AdminDataScreen';
 import SelectionLogScreen from '../screens/SelectionLogScreen';
 import SelectionLowerThirdScreen from '../screens/SelectionLowerThirdScreen';
-import MonopolyLobbyScreen from '../screens/monopoly/MonopolyLobbyScreen';
-import MonopolyGameScreen from '../screens/monopoly/MonopolyGameScreen';
-import MonopolyResultScreen from '../screens/monopoly/MonopolyResultScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AdminUsersScreen from '../screens/AdminUsersScreen';
 import SoundBoardScreen from '../screens/SoundBoardScreen';
@@ -58,9 +55,6 @@ function AppStack() {
       <Stack.Screen name="AdminData" component={AdminDataScreen} />
       <Stack.Screen name="SelectionLog" component={SelectionLogScreen} />
       <Stack.Screen name="SelectionLowerThird" component={SelectionLowerThirdScreen} />
-      <Stack.Screen name="MonopolyLobby" component={MonopolyLobbyScreen} />
-      <Stack.Screen name="MonopolyGame" component={MonopolyGameScreen} />
-      <Stack.Screen name="MonopolyResult" component={MonopolyResultScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
       <Stack.Screen name="SoundBoard" component={SoundBoardScreen} />
