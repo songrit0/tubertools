@@ -128,10 +128,15 @@ export async function submitFinal(code, slotIndex) {
   await update(ref(realtimeDb, `${ROOMS_PATH}/${code}`), updates);
 }
 
-export async function takeOver(code, choice) {
+export async function takeOver(code, choice, by = {}) {
   const updates = {
     locked: true,
     themeColor: 'cyan',
+    takeOverBy: by.uid || null,
+    takeOverName: by.name || null,
+    takeOverSlot: by.slot || null,
+    takeOverChoice: choice,
+    takeOverAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
   for (let i = 1; i <= MAX_SLOTS; i++) {
@@ -145,6 +150,11 @@ export async function resetProtocol(code) {
   const updates = {
     locked: false,
     themeColor: 'yellow',
+    takeOverBy: null,
+    takeOverName: null,
+    takeOverSlot: null,
+    takeOverChoice: null,
+    takeOverAt: null,
     updatedAt: serverTimestamp(),
   };
   for (let i = 1; i <= MAX_SLOTS; i++) {

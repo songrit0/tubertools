@@ -76,7 +76,11 @@ export default function SyncVotePlayerScreen({ navigation, route }) {
   async function handleTakeOver() {
     if (locked) return;
     if (!me.choice) { notify('Select first', 'Choose A, B, or C before forcing sync.'); return; }
-    await takeOver(code, me.choice);
+    await takeOver(code, me.choice, {
+      uid: user?.uid,
+      name: me.name || `ผู้เล่น ${slot}`,
+      slot,
+    });
   }
   async function disconnect() {
     if (user) await leaveSlot(code, slot, user.uid);

@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
   ActivityIndicator, ScrollView, Platform,
 } from 'react-native';
-import { RotateCcw, LogOut, Check } from 'lucide-react-native';
+import { RotateCcw, LogOut, Check, AlertTriangle } from 'lucide-react-native';
 import { useResponsive } from '../hooks/useResponsive';
 import {
   subscribeRoom, setThemeColor, setPilots,
@@ -132,6 +132,28 @@ export default function SyncVoteHostScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Take-over alert banner */}
+        {room.takeOverBy ? (
+          <View style={styles.takeBanner}>
+            <View style={styles.takeBannerLeft}>
+              <View style={styles.takeIconWrap}>
+                <AlertTriangle size={16} color={TOKENS.pRed} />
+              </View>
+              <View style={{ flexShrink: 1 }}>
+                <Text style={styles.takeBannerTitle}>Force sync triggered</Text>
+                <Text style={styles.takeBannerSub} numberOfLines={1}>
+                  <Text style={styles.takeBannerName}>{room.takeOverName || 'Unknown'}</Text>
+                  {room.takeOverSlot ? ` · Slot ${String(room.takeOverSlot).padStart(2, '0')}` : ''}
+                  {room.takeOverChoice ? ` · locked everyone to ${room.takeOverChoice}` : ''}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.takeChip}>
+              <Text style={styles.takeChipTxt}>{room.takeOverChoice || '—'}</Text>
+            </View>
+          </View>
+        ) : null}
 
         {/* Stat row */}
         <View style={styles.statRow}>
@@ -278,6 +300,12 @@ export default function SyncVoteHostScreen({ navigation, route }) {
                 {bannerState !== 'awaiting' ? (
                   <Text style={[styles.logLine, { color: TOKENS.pGreen }]}>· consensus reached</Text>
                 ) : null}
+                {room.takeOverBy ? (
+                  <Text style={[styles.logLine, { color: TOKENS.pRed }]}>
+                    · ⚠ take over by <Text style={styles.logMono}>{room.takeOverName || 'pilot'}</Text>
+                    {room.takeOverChoice ? ` → ${room.takeOverChoice}` : ''}
+                  </Text>
+                ) : null}
                 {bannerState === 'terminal' ? (
                   <Text style={[styles.logLine, { color: TOKENS.pCyan }]}>· terminal · locked</Text>
                 ) : null}
@@ -356,4 +384,27 @@ const styles = StyleSheet.create({
 
   logLine: { color: TOKENS.ink3, fontSize: 11, fontFamily: FONT_MONO, lineHeight: 18 },
   logMono: { color: TOKENS.ink2 },
+
+  takeBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 12, borderRadius: 10,
+    backgroundColor: 'rgba(239,87,87,0.08)',
+    borderWidth: 1, borderColor: 'rgba(239,87,87,0.30)',
+    gap: 12,
+  },
+  takeBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 1 },
+  takeIconWrap: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: 'rgba(239,87,87,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  takeBannerTitle: { color: TOKENS.pRed, fontSize: 13, fontWeight: '700' },
+  takeBannerSub: { color: TOKENS.ink2, fontSize: 12, marginTop: 2 },
+  takeBannerName: { color: TOKENS.ink, fontWeight: '600' },
+  takeChip: {
+    width: 36, height: 36, borderRadius: 8,
+    backgroundColor: TOKENS.pRed,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  takeChipTxt: { color: '#1a0202', fontSize: 18, fontWeight: '800' },
 });
