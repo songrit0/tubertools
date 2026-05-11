@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import {
   User, Mail, Lock, Eye, EyeOff, Camera,
-  CheckCircle, AlertCircle, X, Shield, LogOut,
+  CheckCircle, AlertCircle, X, Shield, LogOut, UserX, Info,
 } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 import { useAuth } from '../contexts/AuthContext';
@@ -69,10 +69,29 @@ function Toast({ visible, success, message, onClose }) {
 }
 
 
+function authMethodLabel(user) {
+  if (!user) return { label: 'ยังไม่ได้เข้าสู่ระบบ', detail: '' };
+  if (user.isAnonymous) {
+    return {
+      label: 'เข้าสู่ระบบโดยไม่ระบุตัวตน',
+      detail: 'บัญชี Guest · ไม่มีการบันทึกข้อมูลโปรไฟล์',
+    };
+  }
+  const provider = user.providerData?.[0]?.providerId;
+  if (provider === 'google.com') {
+    return { label: 'เข้าสู่ระบบด้วย Google', detail: user.email || '' };
+  }
+  if (provider === 'password') {
+    return { label: 'เข้าสู่ระบบด้วย Email + Password', detail: user.email || '' };
+  }
+  return { label: 'เข้าสู่ระบบ', detail: user.email || '' };
+}
+
 export default function ProfileScreen({ navigation }) {
   const { user, isAdmin, role, signOut, refreshUser } = useAuth();
 
   const isGoogleUser = user?.providerData?.some(p => p.providerId === 'google.com') ?? false;
+  const isAnonymous = !!user?.isAnonymous;
 
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
@@ -138,6 +157,42 @@ export default function ProfileScreen({ navigation }) {
   const joinedDate = user?.metadata?.creationTime
     ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     : null;
+
+  // Anonymous users get a stripped-down screen — no profile editor, no
+  // password change. Just a notice telling them what they're signed in as.
+  if (isAnonymous) {
+    const method = authMethodLabel(user);
+    return (
+      <SafeAreaView style={styles.root}>
+        <Sidebar navigation={navigation} active="profile" user={user} isAdmin={isAdmin} role={role} />
+        <View style={styles.main}>
+          <TopBar crumbs={['System', 'Profile']} navigation={navigation} showSearch={false} />
+          <View style={styles.anonWrap}>
+            <View style={styles.anonCard}>
+              <View style={styles.anonIcon}>
+                <UserX size={32} color={Colors.accent} />
+              </View>
+              <Text style={styles.anonTitle}>{method.label}</Text>
+              <Text style={styles.anonDetail}>{method.detail}</Text>
+              <View style={styles.anonNotice}>
+                <Info size={14} color={Colors.fg2} />
+                <Text style={styles.anonNoticeText}>
+                  โปรไฟล์จะไม่ถูกแสดงสำหรับการเข้าสู่ระบบประเภทนี้
+                </Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.75 }, { marginTop: 18 }]}
+                onPress={signOut}
+              >
+                <LogOut size={15} color={Colors.red} strokeWidth={2} />
+                <Text style={styles.signOutText}>Sign out</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.root}>
@@ -632,6 +687,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+
+  // Anonymous / unsupported-profile screen
+  anonWrap: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  anonCard: {
+    width: '100%', maxWidth: 460,
+    backgroundColor: Colors.bg1,
+    borderRadius: 16, borderWidth: 1, borderColor: Colors.borderSubtle,
+    padding: 28, alignItems: 'center', gap: 8,
+  },
+  anonIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: Colors.accentSoft,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  anonTitle: { color: Colors.fg0, fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  anonDetail: { color: Colors.fg2, fontSize: 13, textAlign: 'center' },
+  anonNotice: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.bg2,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    marginTop: 16,
+  },
+  anonNoticeText: { color: Colors.fg2, fontSize: 12, flexShrink: 1 },
 });
 
 const toast = StyleSheet.create({

@@ -1,5 +1,15 @@
 {
   "rules": {
+    "vtubers": { ".read": "auth != null", ".write": "auth != null" },
+    "vtuberSelections": { ".read": "auth != null", ".write": "auth != null" },
+    "vtubersInUse": { ".read": "auth != null", ".write": "auth != null" },
+    "userSelections": { ".read": "auth != null", ".write": "auth != null" },
+    "activePreview": { ".read": true, ".write": "auth != null" },
+    "textBoxes": { ".read": true, ".write": "auth != null" },
+    "textBoxesConfig": { ".read": true, ".write": "auth != null" },
+    "monopolyRooms": { ".read": "auth != null", ".write": "auth != null" },
+    "users": { ".read": "auth != null", ".write": "auth != null" },
+    "admins": { ".read": "auth != null", ".write": "auth != null" },
     "soundboard": {
       "channels": {
         ".read": true,
@@ -25,6 +35,12 @@
     "$other": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "syncVoteRooms": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
     }
   }
 }

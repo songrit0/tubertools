@@ -1,5 +1,24 @@
 # Firebase Realtime Database Rules
 
+## Sync-Vote Pro
+
+Sync-Vote Pro rooms live under `syncVoteRooms/{CODE}`. Both reads and writes
+require an authenticated user (anonymous auth is fine). Slot ownership is
+enforced by the client via Realtime DB transactions in
+`services/syncVoteService.js`; tighten the rules with per-slot uid checks
+once the feature is stable.
+
+```json
+"syncVoteRooms": {
+  "$code": {
+    ".read": "auth != null",
+    ".write": "auth != null"
+  }
+}
+```
+
+Deploy with: `firebase deploy --only database`
+
 ## Current Issue
 If the "END ROUND & CLEAR ALL" button shows logs but doesn't delete, the issue is likely **Firebase Security Rules**.
 

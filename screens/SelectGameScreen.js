@@ -40,6 +40,18 @@ const GAMES = [
     coverGradient: ['#001020', '#001830'],
     stats: { players: 4, sessions: 0 },
   },
+  {
+    id: 'sync-vote',
+    title: 'Sync-Vote Pro',
+    description: 'ตัวคุมสัญญาณผู้เล่น · เข้าร่วม session กับทีมงาน',
+    emoji: '⚡',
+    screen: 'SyncVoteLobby',
+    navParams: { mode: 'join' },
+    tag: 'NEW',
+    isUse: true,
+    coverGradient: ['#001A1F', '#003040'],
+    stats: { players: 6, sessions: 0 },
+  },
 ];
 
 function LivePill() {
@@ -136,7 +148,7 @@ export default function SelectGameScreen({ navigation }) {
         Linking.openURL(baseUrl);
       }
     } else {
-      navigation.navigate(item.screen, { gameId: item.id });
+      navigation.navigate(item.screen, item.navParams || { gameId: item.id });
     }
   };
 

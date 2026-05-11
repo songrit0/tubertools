@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, useWindowDimensions, ActivityIndicator, Modal, Image, Pressable,
+  StyleSheet, useWindowDimensions, ActivityIndicator, Modal, Image, Pressable, Switch,
 } from 'react-native';
 import {
   subscribeToVtubers, subscribeToVtubersInUse,
@@ -274,6 +274,7 @@ export default function VTuberDatabaseScreen({ navigation }) {
             <View style={styles.tableHeader}>
               <Text style={[styles.headerCell, styles.colName]}>VTuber</Text>
               <Text style={[styles.headerCell, styles.colId]}>ID</Text>
+              <Text style={[styles.headerCell, styles.colEnabled]}>Enabled</Text>
               <View style={styles.colActions} />
             </View>
 
@@ -311,6 +312,17 @@ export default function VTuberDatabaseScreen({ navigation }) {
 
                 {/* ID */}
                 <Text style={[styles.colId, styles.idText]} numberOfLines={1}>{vtuber.id}</Text>
+
+                {/* Enabled toggle (default ON if field missing) */}
+                <View style={[styles.colEnabled, styles.enabledCell]}>
+                  <Switch
+                    value={vtuber.enabled !== false}
+                    onValueChange={(val) => updateVtuber(vtuber.id, { enabled: val })}
+                    disabled={!isAdmin}
+                    trackColor={{ false: Colors.bg3, true: Colors.accent }}
+                    thumbColor={vtuber.enabled !== false ? Colors.accentFg : Colors.fg3}
+                  />
+                </View>
 
                 {/* Actions */}
                 <View style={[styles.colActions, styles.actionsCell]}>
@@ -523,6 +535,8 @@ const styles = StyleSheet.create({
   // Columns
   colName: { flex: 1 },
   colId: { width: COL_ID },
+  colEnabled: { width: 90, alignItems: 'flex-start' },
+  enabledCell: { flexDirection: 'row', alignItems: 'center' },
   colActions: { width: COL_ACTIONS },
 
   nameCell: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingRight: 8 },

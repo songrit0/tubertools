@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import {
   Gamepad2, Layers, Database,
-  User, Shield, ChevronDown,
+  User, Shield, ChevronDown, Crown,
 } from 'lucide-react-native';
 import { Colors } from '../../theme/colors';
 
@@ -12,6 +12,7 @@ const ICON_MAP = {
   database: Database,
   user: User,
   shield: Shield,
+  crown: Crown,
 };
 
 // roles: which roles can see this item ('admin','mod','user' = all roles see it)
@@ -28,6 +29,7 @@ const SECTIONS = [
     roles: ['admin', 'mod'],
     items: [
       { id: 'log', label: 'Selection Log', icon: 'layers', screen: 'SelectionLog', roles: ['admin', 'mod'] },
+      { id: 'syncvote-host', label: 'Crew · Sync-Vote', icon: 'crown', screen: 'SyncVoteLobby', params: { mode: 'host' }, roles: ['admin', 'mod'] },
     ],
   },
   {
@@ -86,7 +88,7 @@ export default function Sidebar({ navigation, active = 'games', user, isAdmin, r
                 <TouchableOpacity
                   key={item.id}
                   style={[styles.item, isActive && styles.itemActive]}
-                  onPress={() => navigation?.navigate(item.screen)}
+                  onPress={() => navigation?.navigate(item.screen, item.params)}
                   activeOpacity={0.7}
                 >
                   {isActive && <View style={styles.activeBar} />}

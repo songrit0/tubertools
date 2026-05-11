@@ -14,9 +14,9 @@ import {
   Pressable,
   useWindowDimensions,
 } from 'react-native';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, X, AlertCircle } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, X, AlertCircle, UserX } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
-import { loginWithEmail, loginWithGoogle } from '../services/authService';
+import { loginWithEmail, loginWithGoogle, loginAnonymously } from '../services/authService';
 
 const DEFAULT_DOMAIN = '@tuber-tools.com';
 const toEmail = (input) => input.includes('@') ? input : input + DEFAULT_DOMAIN;
@@ -65,6 +65,7 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [anonLoading, setAnonLoading] = useState(false);
   const [errorPopup, setErrorPopup] = useState({ visible: false, title: '', message: '' });
 
   const { width } = useWindowDimensions();
@@ -72,6 +73,17 @@ export default function LoginScreen({ navigation }) {
 
   const showError = (title, message) => {
     setErrorPopup({ visible: true, title, message });
+  };
+
+  const handleAnonymousLogin = async () => {
+    setAnonLoading(true);
+    try {
+      await loginAnonymously();
+    } catch (error) {
+      showError('เข้าสู่ระบบไม่สำเร็จ', 'ไม่สามารถเข้าสู่ระบบโดยไม่ระบุตัวตนได้ กรุณาลองใหม่');
+    } finally {
+      setAnonLoading(false);
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -180,6 +192,22 @@ export default function LoginScreen({ navigation }) {
               <View style={styles.btnRow}>
                 <Text style={styles.googleIconText}>G</Text>
                 <Text style={styles.googleBtnText}>Continue with Google</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Anonymous button — quick guest entry, no profile saved. */}
+          <TouchableOpacity
+            style={[styles.anonBtn, anonLoading && styles.btnDisabled]}
+            onPress={handleAnonymousLogin}
+            disabled={anonLoading}
+          >
+            {anonLoading ? (
+              <ActivityIndicator color={Colors.fg2} />
+            ) : (
+              <View style={styles.btnRow}>
+                <UserX size={15} color={Colors.fg2} />
+                <Text style={styles.anonBtnText}>เข้าสู่ระบบโดยไม่ระบุตัวตน</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -523,6 +551,22 @@ const styles = StyleSheet.create({
     color: Colors.fg1,
     fontSize: 14,
     fontWeight: '600',
+  },
+
+  anonBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  anonBtnText: {
+    color: Colors.fg2,
+    fontSize: 13,
+    fontWeight: '500',
   },
 
   registerRow: {
