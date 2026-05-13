@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  ActivityIndicator, ScrollView, Platform,
+  ActivityIndicator, ScrollView, Platform, Linking,
 } from 'react-native';
-import { RotateCcw, LogOut, Check, AlertTriangle } from 'lucide-react-native';
+import { RotateCcw, LogOut, Check, AlertTriangle, Tv, Copy } from 'lucide-react-native';
 import { useResponsive } from '../hooks/useResponsive';
 import {
   subscribeRoom, setThemeColor, setPilots,
@@ -103,6 +103,32 @@ export default function SyncVoteHostScreen({ navigation, route }) {
     navigation.replace('SelectGame');
   }
 
+  const OBS_DEPLOYED = `https://tuber-tools-266cb.web.app/syncvote-stage?code=${code}&bg=transparent`;
+  const OBS_LOCAL = (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin)
+    ? `${window.location.origin}/syncvote-stage.html?code=${code}&bg=transparent`
+    : `http://localhost:5000/syncvote-stage.html?code=${code}&bg=transparent`;
+
+  async function copyToClipboard(text) {
+    try {
+      if (Platform.OS === 'web' && navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const Clipboard = require('react-native').Clipboard;
+        Clipboard?.setString?.(text);
+      }
+    } catch (err) {
+      console.warn('clipboard failed', err);
+    }
+  }
+
+  function openObs(url) {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      Linking.openURL(url).catch(() => {});
+    }
+  }
+
   // Responsive: stack columns on tablet / mobile.
   const wide = responsive.width >= 1100;
   const med = responsive.width >= 820;
@@ -122,6 +148,26 @@ export default function SyncVoteHostScreen({ navigation, route }) {
           </View>
           <View style={styles.headActions}>
             <RoomChip code={code} size="lg" />
+            <View style={styles.obsGroup}>
+              <TouchableOpacity style={styles.btnObs} onPress={() => openObs(OBS_DEPLOYED)}>
+                <Tv size={14} color={TOKENS.gold} />
+                <Text style={styles.btnObsText}>OBS view</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.btnObsCopy}
+                onPress={() => copyToClipboard(OBS_DEPLOYED)}
+                accessibilityLabel="Copy deployed OBS URL"
+              >
+                <Copy size={12} color={TOKENS.ink2} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.btnObsLocal}
+                onPress={() => openObs(OBS_LOCAL)}
+                accessibilityLabel="Open local OBS URL"
+              >
+                <Text style={styles.btnObsLocalText}>local</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity style={styles.btnSecondary} onPress={() => resetProtocol(code)}>
               <RotateCcw size={14} color={TOKENS.ink} />
               <Text style={styles.btnSecondaryText}>Reset</Text>
@@ -348,6 +394,13 @@ const styles = StyleSheet.create({
   btnSecondaryText: { color: TOKENS.ink, fontSize: 12, fontWeight: '500' },
   btnDestructive: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: 'rgba(239,87,87,0.08)', borderWidth: 1, borderColor: 'rgba(239,87,87,0.30)' },
   btnDestructiveText: { color: TOKENS.pRed, fontSize: 12, fontWeight: '600' },
+
+  obsGroup: { flexDirection: 'row', alignItems: 'stretch', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,214,107,0.30)', backgroundColor: 'rgba(255,214,107,0.08)' },
+  btnObs: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7 },
+  btnObsText: { color: TOKENS.gold, fontSize: 12, fontWeight: '600' },
+  btnObsCopy: { paddingHorizontal: 8, justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: 'rgba(255,214,107,0.30)' },
+  btnObsLocal: { paddingHorizontal: 8, justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: 'rgba(255,214,107,0.30)' },
+  btnObsLocalText: { fontFamily: FONT_MONO, color: TOKENS.ink3, fontSize: 10, letterSpacing: 1 },
 
   statRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
 

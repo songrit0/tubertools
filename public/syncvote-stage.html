@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sync-Vote · Stage multiview</title>
+<meta name="description" content="OBS browser source for Sync-Vote Pro stage multiview">
+<link rel="icon" href="/assets/assetslogo.png">
+<style>
+  :root {
+    --bg:        #0a0a0b;
+    --bg1:       #0e0e10;
+    --bg2:       #131316;
+    --surface:   #151518;
+    --surface2:  #1a1a1e;
+    --surface3:  #202024;
+    --line:      rgba(255,255,255,0.05);
+    --line2:     rgba(255,255,255,0.08);
+    --line3:     rgba(255,255,255,0.14);
+    --ink:       #f5f5f6;
+    --ink2:      #c8c8cc;
+    --ink3:      #8a8a91;
+    --ink4:      #5b5b62;
+    --gold:      #ffd66b;
+    --pYellow:   #ffd66b;
+    --pRed:      #ef5757;
+    --pGreen:    #4ade80;
+    --pCyan:     #38bdf8;
+    --accent:    var(--pYellow);
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  body.transparent { background: transparent; }
+
+  .stage {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    padding: 18px; gap: 12px;
+  }
+
+  /* ── header ──────────────────────────────────── */
+  .head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .head-l { display: flex; align-items: center; gap: 12px; }
+  .head-title { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: 0.2px; }
+  .head-status { font-size: 12px; font-weight: 500; color: var(--accent); }
+
+  .roomchip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--line2);
+    border-radius: 8px;
+  }
+  .roomchip .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--gold); }
+  .roomchip .code {
+    font-family: var(--mono); color: var(--ink); font-size: 12px;
+    letter-spacing: 2px; font-weight: 600;
+  }
+
+  /* ── grid ────────────────────────────────────── */
+  .grid {
+    flex: 1; min-height: 0;
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-auto-rows: 1fr;
+  }
+  .grid.cols-1 { grid-template-columns: 1fr; }
+  .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+  /* ── slot tile ──────────────────────────────── */
+  .tile {
+    position: relative;
+    border: 1px solid var(--line2);
+    border-radius: 10px;
+    background: var(--surface);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: border-color 0.25s, background-color 0.25s;
+    cursor: pointer;
+    user-select: none;
+  }
+  body.no-mood .tile { cursor: default; }
+  .tile:hover { border-color: var(--line3); }
+  .tile.live, .tile.final { border-color: var(--accent); }
+  .tile.final { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+
+  .tile-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    gap: 8px;
+  }
+  .tile-head-l { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+  .avatar {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--surface2);
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    background-size: cover; background-position: center;
+  }
+  .avatar-fb {
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+  }
+  .tile-name {
+    color: var(--ink); font-size: 12px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1; min-width: 0;
+  }
+  .tile-meta {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+    color: var(--ink4); flex-shrink: 0;
+  }
+  .tile.live .tile-meta { color: var(--ink2); }
+  .tile.final .tile-meta { color: var(--accent); }
+
+  .tile-body {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    position: relative; padding: 8px;
+  }
+  .tile-choice {
+    font-size: clamp(48px, 9vw, 96px);
+    line-height: 1; font-weight: 800; color: var(--ink);
+  }
+  .tile.final .tile-choice { color: var(--accent); }
+  .tile-nosignal {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+    color: var(--ink4);
+  }
+  .tile-lock {
+    position: absolute; bottom: 10px; right: 10px;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    color: var(--accent);
+  }
+
+  /* ── consensus banner ────────────────────────── */
+  .banner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; gap: 12px;
+    border: 1px solid var(--line2); border-radius: 10px;
+    background: var(--surface);
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .banner-l { display: flex; align-items: center; gap: 12px; }
+  .banner-dot { width: 8px; height: 8px; border-radius: 4px; background: var(--ink3); }
+  .banner-text { font-size: 14px; font-weight: 700; color: var(--ink3); }
+  .banner-sub { font-size: 12px; color: var(--ink3); }
+
+  .banner.achieved {
+    background: rgba(74,222,128,0.06);
+    border-color: rgba(74,222,128,0.30);
+  }
+  .banner.achieved .banner-dot,
+  .banner.achieved .banner-text { background: var(--pGreen); color: var(--pGreen); }
+  .banner.achieved .banner-dot { background: var(--pGreen); }
+
+  .banner.terminal {
+    background: rgba(56,189,248,0.06);
+    border-color: rgba(56,189,248,0.30);
+  }
+  .banner.terminal .banner-dot { background: var(--pCyan); }
+  .banner.terminal .banner-text { color: var(--pCyan); }
+
+  /* ── empty / loading ─────────────────────────── */
+  .empty {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--line2); border-radius: 10px;
+    background: var(--surface);
+  }
+  .empty .pill {
+    padding: 3px 8px;
+    background: rgba(255,214,107,0.10);
+    border: 1px solid rgba(255,214,107,0.25);
+    color: var(--gold);
+    border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+  }
+  .empty-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-top: 4px; }
+  .empty-sub { font-size: 12px; color: var(--ink3); }
+
+  /* ── mood bar ────────────────────────────────── */
+  .moodbar {
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap;
+  }
+  .moodbar .label {
+    font-size: 11px; color: var(--ink3); font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .moodbtn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg2);
+    border: 1px solid var(--line2);
+    border-radius: 8px;
+    color: var(--ink);
+    font: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, transform 0.05s;
+    user-select: none;
+  }
+  .moodbtn:hover { background: var(--surface2); }
+  .moodbtn:active { transform: translateY(1px); }
+  .moodbtn .moodot {
+    width: 10px; height: 10px; border-radius: 5px;
+    background: var(--btn-color, var(--ink3));
+  }
+  .moodbtn.active {
+    border-color: var(--btn-color);
+    background: color-mix(in srgb, var(--btn-color) 12%, var(--bg2));
+    color: var(--btn-color);
+  }
+  .moodbtn .desc { color: var(--ink4); font-weight: 500; font-size: 11px; }
+  .moodbtn.active .desc { color: color-mix(in srgb, var(--btn-color) 70%, var(--ink3)); }
+
+  .actionbtn {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--line2);
+    border-radius: 8px;
+    color: var(--ink); font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  .actionbtn:hover { background: var(--surface3); }
+
+  /* ── chrome toggles via URL params ───────────── */
+  body.no-chrome .head,
+  body.no-chrome .banner,
+  body.no-chrome .moodbar { display: none; }
+  body.no-banner .banner { display: none; }
+  body.no-head .head { display: none; }
+  body.no-mood .moodbar { display: none; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="head">
+      <div class="head-l">
+        <div class="roomchip"><div class="dot"></div><div class="code" id="roomCode">------</div></div>
+        <div class="head-title">Stage · multiview</div>
+      </div>
+      <div class="head-status" id="status">○ Awaiting</div>
+    </div>
+
+    <div class="moodbar" id="moodbar">
+      <span class="label">Protocol mood</span>
+      <button class="moodbtn" data-mood="yellow" style="--btn-color:#ffd66b">
+        <span class="moodot"></span><span>Standby</span><span class="desc">Calm tension</span>
+      </button>
+      <button class="moodbtn" data-mood="red" style="--btn-color:#ef5757">
+        <span class="moodot"></span><span>Pressure</span><span class="desc">Decide now</span>
+      </button>
+      <button class="moodbtn" data-mood="green" style="--btn-color:#4ade80">
+        <span class="moodot"></span><span>Pass</span><span class="desc">Safe answer</span>
+      </button>
+      <button class="moodbtn" data-mood="cyan" style="--btn-color:#38bdf8">
+        <span class="moodot"></span><span>Terminal</span><span class="desc">Locked in</span>
+      </button>
+      <button class="actionbtn" id="btnReset" title="Reset protocol & clear all signals">↺ Reset</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="banner" id="banner">
+      <div class="banner-l">
+        <div class="banner-dot"></div>
+        <div class="banner-text" id="bannerText">Awaiting signals</div>
+      </div>
+      <div class="banner-sub" id="bannerSub">Players have not converged</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getDatabase, ref, onValue, update, serverTimestamp }
+      from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+    import { getAuth, signInAnonymously }
+      from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC95K5rmqsZbmPmSDvgGeWgqbQvOll4X60",
+      authDomain: "tuber-tools-266cb.firebaseapp.com",
+      databaseURL: "https://tuber-tools-266cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tuber-tools-266cb",
+      storageBucket: "tuber-tools-266cb.firebasestorage.app",
+      messagingSenderId: "519614170930",
+      appId: "1:519614170930:web:243813c3bcba9df196b92b",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    // ── URL params ──────────────────────────────
+    const params = new URLSearchParams(location.search);
+    const codeParam = (params.get('code') || '').trim().toUpperCase();
+    const bg = (params.get('bg') || '').toLowerCase();
+    const chrome = (params.get('chrome') || '').toLowerCase();
+    if (bg === 'transparent' || bg === 't' || bg === '0') {
+      document.body.classList.add('transparent');
+    }
+    if (chrome === 'none' || chrome === '0') document.body.classList.add('no-chrome');
+    if (chrome === 'no-head') document.body.classList.add('no-head');
+    if (chrome === 'no-banner') document.body.classList.add('no-banner');
+    if (chrome === 'no-mood') document.body.classList.add('no-mood');
+    const readonly = params.get('readonly') === '1' || params.get('readonly') === 'true';
+    if (readonly) document.body.classList.add('no-mood');
+
+    // ── design tokens (mirror Primitives.js PROTOCOL_META) ──
+    const PROTOCOL = {
+      yellow: { label: 'Standby',  color: '#ffd66b' },
+      red:    { label: 'Pressure', color: '#ef5757' },
+      green:  { label: 'Pass',     color: '#4ade80' },
+      cyan:   { label: 'Terminal', color: '#38bdf8' },
+    };
+
+    const MAX_SLOTS = 6;
+
+    // ── element refs ─────────────────────────────
+    const $grid = document.getElementById('grid');
+    const $code = document.getElementById('roomCode');
+    const $status = document.getElementById('status');
+    const $banner = document.getElementById('banner');
+    const $bannerText = document.getElementById('bannerText');
+    const $bannerSub = document.getElementById('bannerSub');
+
+    // ── helpers ──────────────────────────────────
+    function computeAllMatch(room) {
+      if (!room) return false;
+      const n = room.activePlayers ?? 0;
+      if (n < 1) return false;
+      const first = room.player1?.choice;
+      if (!first) return false;
+      for (let i = 2; i <= n; i++) {
+        if (room[`player${i}`]?.choice !== first) return false;
+      }
+      return true;
+    }
+    function allFinal(room) {
+      if (!room) return false;
+      const n = room.activePlayers ?? 0;
+      for (let i = 1; i <= n; i++) {
+        if (!room[`player${i}`]?.isFinal) return false;
+      }
+      return n > 0;
+    }
+
+    function hashHue(name = '') {
+      let h = 0;
+      for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+      return Math.abs(h) % 360;
+    }
+    function initials(name = '?') {
+      return (name.trim() || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+
+    function avatarHtml(name, imageUrl) {
+      if (imageUrl) {
+        return `<div class="avatar" style="background-image:url('${escapeHtml(imageUrl)}')"></div>`;
+      }
+      const hue = hashHue(name);
+      return `<div class="avatar" style="background:hsl(${hue},32%,24%)">
+        <span class="avatar-fb" style="color:hsl(${hue},70%,80%)">${escapeHtml(initials(name))}</span>
+      </div>`;
+    }
+
+    function gridClassFor(count) {
+      if (count <= 1) return 'cols-1';
+      if (count === 2) return 'cols-2';
+      if (count === 4) return 'cols-2';
+      if (count === 3 || count === 5 || count === 6) return 'cols-3';
+      return '';
+    }
+
+    // ── render ───────────────────────────────────
+    function renderEmpty(message = 'No personas configured', sub = 'Waiting for host to pick VTubers.') {
+      $grid.className = 'grid';
+      $grid.innerHTML = `
+        <div class="empty">
+          <div class="pill">STANDBY</div>
+          <div class="empty-title">${escapeHtml(message)}</div>
+          <div class="empty-sub">${escapeHtml(sub)}</div>
+        </div>
+      `;
+    }
+
+    function render(room) {
+      if (!room) {
+        $code.textContent = codeParam || '------';
+        document.documentElement.style.setProperty('--accent', PROTOCOL.yellow.color);
+        $status.textContent = '○ Awaiting';
+        $status.style.color = PROTOCOL.yellow.color;
+        $banner.className = 'banner';
+        $bannerText.textContent = 'Awaiting signals';
+        $bannerSub.textContent = 'Room not found or not opened.';
+        renderEmpty('Room not found', codeParam ? `Code ${codeParam} is not currently open.` : 'Add ?code=XXXXXX to the URL.');
+        return;
+      }
+
+      const theme = room.themeColor || 'yellow';
+      const meta = PROTOCOL[theme] || PROTOCOL.yellow;
+      const synced = computeAllMatch(room);
+      const finalized = allFinal(room);
+      const state = finalized ? 'terminal' : synced ? 'achieved' : 'awaiting';
+      const accent = state === 'terminal' ? PROTOCOL.cyan.color : meta.color;
+
+      document.documentElement.style.setProperty('--accent', accent);
+      $code.textContent = room.code || codeParam || '------';
+
+      // sync mood button active state
+      document.querySelectorAll('.moodbtn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.mood === theme);
+      });
+
+      $status.textContent =
+        state === 'terminal' ? '◼ Terminal' :
+        state === 'achieved' ? '● Consensus' : '○ Awaiting';
+      $status.style.color = accent;
+
+      const banner = {
+        awaiting: { text: 'Awaiting signals',                 sub: 'Players have not converged' },
+        achieved: { text: 'Consensus achieved',               sub: 'Submit to lock the floor'   },
+        terminal: { text: 'Terminal state · Protocol closed', sub: 'All signals locked'         },
+      }[state];
+      $banner.className = `banner ${state}`;
+      $bannerText.textContent = banner.text;
+      $bannerSub.textContent = banner.sub;
+
+      const n = room.activePlayers || 0;
+      const slots = [];
+      for (let i = 1; i <= n; i++) {
+        const s = room[`player${i}`];
+        if (s?.vtuberId) {
+          slots.push({
+            idx: i,
+            name: s.name || `ผู้เล่น ${i}`,
+            imageUrl: s.imageUrl || '',
+            choice: s.choice || null,
+            state: s.isFinal ? 'final' : (s.uid || s.choice) ? 'live' : 'empty',
+          });
+        }
+      }
+
+      if (slots.length === 0) {
+        renderEmpty();
+        return;
+      }
+
+      $grid.className = `grid ${gridClassFor(slots.length)}`;
+      $grid.innerHTML = slots.map((s) => {
+        const stateText = s.state === 'empty' ? 'EMPTY' : s.state === 'live' ? 'LIVE' : 'FINAL';
+        const choiceHtml = s.choice
+          ? `<div class="tile-choice">${escapeHtml(s.choice)}</div>`
+          : `<div class="tile-nosignal">NO SIGNAL</div>`;
+        const lockHtml = s.state === 'final' ? `<div class="tile-lock">◼ LOCK</div>` : '';
+        return `
+          <div class="tile ${s.state}" data-slot="${s.idx}" data-choice="${s.choice || ''}" title="Click: cycle A→B→C→clear">
+            <div class="tile-head">
+              <div class="tile-head-l">
+                ${avatarHtml(s.name, s.imageUrl)}
+                <div class="tile-name">${escapeHtml(s.name)}</div>
+              </div>
+              <div class="tile-meta">${String(s.idx).padStart(2, '0')} · ${stateText}</div>
+            </div>
+            <div class="tile-body">
+              ${choiceHtml}
+              ${lockHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ── subscribe ────────────────────────────────
+    async function start() {
+      try { await signInAnonymously(auth); }
+      catch (err) { console.error('Anonymous sign-in failed:', err); }
+
+      if (!codeParam) {
+        // No code provided — fall back to the currently-active room pointer.
+        onValue(ref(db, 'syncVoteActive'), (snap) => {
+          const v = snap.val();
+          if (v?.code) attachToRoom(v.code);
+          else render(null);
+        }, (err) => { console.error(err); render(null); });
+        return;
+      }
+      attachToRoom(codeParam);
+    }
+
+    let unsubRoom = null;
+    let currentCode = null;
+    function attachToRoom(code) {
+      if (currentCode === code) return;
+      currentCode = code;
+      if (unsubRoom) { unsubRoom(); unsubRoom = null; }
+      const r = ref(db, `syncVoteRooms/${code}`);
+      const handler = (snap) => render(snap.exists() ? snap.val() : null);
+      onValue(r, handler, (err) => { console.error('subscribe error:', err); render(null); });
+      // onValue returns void in modular SDK; rely on next attach to drop the listener via off if needed.
+    }
+
+    // ── writers ──────────────────────────────────
+    async function setThemeColor(color) {
+      if (!currentCode) return;
+      try {
+        await update(ref(db, `syncVoteRooms/${currentCode}`), {
+          themeColor: color,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) { console.error('setThemeColor failed:', err); }
+    }
+
+    async function resetProtocol() {
+      if (!currentCode) return;
+      const updates = {
+        locked: false,
+        themeColor: 'yellow',
+        takeOverBy: null,
+        takeOverName: null,
+        takeOverSlot: null,
+        takeOverChoice: null,
+        takeOverAt: null,
+        updatedAt: serverTimestamp(),
+      };
+      for (let i = 1; i <= MAX_SLOTS; i++) {
+        updates[`player${i}/choice`] = null;
+        updates[`player${i}/isFinal`] = false;
+      }
+      try { await update(ref(db, `syncVoteRooms/${currentCode}`), updates); }
+      catch (err) { console.error('resetProtocol failed:', err); }
+    }
+
+    async function cycleSlotChoice(slotIndex, currentChoice) {
+      if (!currentCode) return;
+      const seq = [null, 'A', 'B', 'C'];
+      const idx = seq.indexOf(currentChoice || null);
+      const next = seq[(idx + 1) % seq.length];
+      try {
+        await update(ref(db, `syncVoteRooms/${currentCode}/player${slotIndex}`), {
+          choice: next,
+        });
+        await update(ref(db, `syncVoteRooms/${currentCode}`), {
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) { console.error('cycleSlotChoice failed:', err); }
+    }
+
+    // ── click bindings ───────────────────────────
+    document.querySelectorAll('.moodbtn').forEach((btn) => {
+      btn.addEventListener('click', () => setThemeColor(btn.dataset.mood));
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      if (confirm('Reset protocol and clear all signals?')) resetProtocol();
+    });
+    $grid.addEventListener('click', (e) => {
+      if (readonly) return;
+      const tile = e.target.closest('.tile[data-slot]');
+      if (!tile) return;
+      const idx = parseInt(tile.dataset.slot, 10);
+      if (!idx) return;
+      cycleSlotChoice(idx, tile.dataset.choice || null);
+    });
+
+    render(null);
+    start();
+  </script>
+</body>
+</html>

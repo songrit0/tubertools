@@ -35,6 +35,10 @@
         "destination": "/soundboard-controller.html"
       },
       {
+        "source": "/syncvote-stage",
+        "destination": "/syncvote-stage.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
