@@ -39,6 +39,10 @@
         "destination": "/syncvote-stage.html"
       },
       {
+        "source": "/notify-display",
+        "destination": "/notify-display.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

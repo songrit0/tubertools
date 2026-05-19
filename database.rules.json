@@ -28,6 +28,10 @@
         ".write": true
       }
     },
+    "streamNotify": {
+      ".read": true,
+      ".write": "auth != null"
+    },
     "_ping": {
       ".write": true,
       ".read": false

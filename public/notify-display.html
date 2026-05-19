@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stream Notification · OBS overlay</title>
+<meta name="description" content="OBS browser source — admin notification toast">
+<link rel="icon" href="/assets/assetslogo.png">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    background: transparent;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Sarabun', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :root {
+    --gold:   #ffd66b;
+    --goldFg: #1a1402;
+    --ink:    #f5f5f7;
+  }
+
+  .notif {
+    position: fixed; left: 50%; top: 36px;
+    transform: translateX(-50%) translateY(-160%);
+    max-width: min(82vw, 760px);
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 28px;
+    background: linear-gradient(135deg, rgba(20,18,8,0.92), rgba(12,12,14,0.92));
+    border: 1px solid rgba(255,214,107,0.5);
+    border-radius: 16px;
+    box-shadow: 0 22px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,214,107,0.08) inset;
+    backdrop-filter: blur(12px);
+    opacity: 0; pointer-events: none;
+    transition: transform 0.5s cubic-bezier(.16,1,.3,1), opacity 0.4s ease;
+    z-index: 99999;
+  }
+  .notif.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  .notif-icon {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: var(--gold); color: var(--goldFg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 23px; font-weight: 800;
+  }
+  .notif.show .notif-icon { animation: ring 0.75s ease; }
+  @keyframes ring {
+    0%,100% { transform: rotate(0); }
+    15% { transform: rotate(-18deg); }
+    30% { transform: rotate(14deg); }
+    45% { transform: rotate(-10deg); }
+    60% { transform: rotate(6deg); }
+    75% { transform: rotate(-3deg); }
+  }
+
+  .notif-body { min-width: 0; }
+  .notif-label {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--gold); font-weight: 700; margin-bottom: 4px;
+  }
+  .notif-text {
+    color: var(--ink); font-size: 19px; font-weight: 700; line-height: 1.35;
+    word-break: break-word;
+  }
+
+  .progress {
+    position: absolute; left: 0; bottom: 0; height: 3px;
+    background: var(--gold); border-radius: 0 0 16px 16px;
+    width: 100%; transform-origin: left;
+  }
+  .notif.show .progress { animation: drain var(--dwell, 6s) linear forwards; }
+  @keyframes drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+</style>
+</head>
+<body>
+  <div class="notif" id="notif">
+    <div class="notif-icon">🔔</div>
+    <div class="notif-body">
+      <div class="notif-label" id="notifLabel">ประกาศ</div>
+      <div class="notif-text" id="notifText"></div>
+    </div>
+    <div class="progress"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC95K5rmqsZbmPmSDvgGeWgqbQvOll4X60",
+      authDomain: "tuber-tools-266cb.firebaseapp.com",
+      databaseURL: "https://tuber-tools-266cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tuber-tools-266cb",
+      storageBucket: "tuber-tools-266cb.firebasestorage.app",
+      messagingSenderId: "519614170930",
+      appId: "1:519614170930:web:243813c3bcba9df196b92b",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // ── URL params ───────────────────────────────
+    const params = new URLSearchParams(location.search);
+    const labelParam = params.get('label');
+    if (labelParam) document.getElementById('notifLabel').textContent = labelParam;
+
+    const $notif = document.getElementById('notif');
+    const $text  = document.getElementById('notifText');
+
+    // ── chime (Web Audio "ding-dong") ────────────
+    let audioCtx = null;
+    function playChime() {
+      try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        [[988, 0], [740, 0.19]].forEach(([freq, t]) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.0001, now + t);
+          gain.gain.exponentialRampToValueAtTime(0.34, now + t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.65);
+          osc.connect(gain).connect(audioCtx.destination);
+          osc.start(now + t);
+          osc.stop(now + t + 0.7);
+        });
+      } catch (err) { console.warn('chime failed:', err); }
+    }
+
+    // ── notification handling ────────────────────
+    let lastId = null;
+    let seeded = false;
+    let hideTimer = null;
+
+    function show(n) {
+      if (!n || !n.id) return;
+      // On first snapshot, remember the existing id but don't replay it.
+      if (!seeded) { seeded = true; lastId = n.id; return; }
+      if (n.id === lastId) return;
+      lastId = n.id;
+
+      const dwell = Math.min(
+        15000,
+        n.durationMs || (4000 + (n.text || '').length * 75)
+      );
+      $text.textContent = n.text || '';
+      $notif.style.setProperty('--dwell', dwell + 'ms');
+
+      // Restart entrance + bell + progress even if already visible.
+      $notif.classList.remove('show');
+      void $notif.offsetWidth;
+      $notif.classList.add('show');
+
+      if (n.sound !== false) playChime();
+
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => $notif.classList.remove('show'), dwell);
+    }
+
+    db.ref('streamNotify').on('value', (snap) => {
+      show(snap.exists() ? snap.val() : null);
+    }, (err) => console.error('subscribe error:', err));
+  </script>
+</body>
+</html>

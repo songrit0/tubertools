@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import {
   Gamepad2, Layers, Database,
-  User, Shield, ChevronDown, Crown,
+  User, Shield, ChevronDown, Crown, Bell,
 } from 'lucide-react-native';
 import { Colors } from '../../theme/colors';
 
@@ -13,6 +13,7 @@ const ICON_MAP = {
   user: User,
   shield: Shield,
   crown: Crown,
+  bell: Bell,
 };
 
 // roles: which roles can see this item ('admin','mod','user' = all roles see it)
@@ -30,6 +31,7 @@ const SECTIONS = [
     items: [
       { id: 'log', label: 'Selection Log', icon: 'layers', screen: 'SelectionLog', roles: ['admin', 'mod'] },
       { id: 'syncvote-host', label: 'Crew · Sync-Vote', icon: 'crown', screen: 'SyncVoteLobby', params: { mode: 'host' }, roles: ['admin', 'mod'] },
+      { id: 'notify', label: 'OBS Notification', icon: 'bell', screen: 'StreamNotify', roles: ['admin', 'mod'] },
     ],
   },
   {

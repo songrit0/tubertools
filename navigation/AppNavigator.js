@@ -23,6 +23,7 @@ import SyncVoteJoinScreen from '../screens/SyncVoteJoinScreen';
 import SyncVoteHostScreen from '../screens/SyncVoteHostScreen';
 import SyncVotePlayerScreen from '../screens/SyncVotePlayerScreen';
 import SyncVoteThankYouScreen from '../screens/SyncVoteThankYouScreen';
+import StreamNotifyScreen from '../screens/StreamNotifyScreen';
 
 const Stack = createStackNavigator();
 
@@ -66,6 +67,7 @@ function AppStack() {
       <Stack.Screen name="SyncVoteHost" component={SyncVoteHostScreen} />
       <Stack.Screen name="SyncVotePlayer" component={SyncVotePlayerScreen} />
       <Stack.Screen name="SyncVoteThankYou" component={SyncVoteThankYouScreen} />
+      <Stack.Screen name="StreamNotify" component={StreamNotifyScreen} />
     </Stack.Navigator>
   );
 }
