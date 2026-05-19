@@ -21,9 +21,29 @@ export default function StreamNotifyScreen({ navigation }) {
   const [history, setHistory] = useState([]);
   const [error, setError] = useState('');
 
-  const obsUrl = Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin
+  // OBS Browser Source URL options
+  const [scale, setScale] = useState(1.4);
+  const [pos, setPos] = useState('top');
+  const [label, setLabel] = useState('');
+
+  const obsBase = Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin
     ? `${window.location.origin}/notify-display.html`
     : 'https://tuber-tools-266cb.web.app/notify-display.html';
+
+  const obsUrl = (() => {
+    const q = [];
+    if (scale !== 1.4) q.push(`scale=${scale}`);
+    if (pos === 'center') q.push('pos=center');
+    if (label.trim()) q.push(`label=${encodeURIComponent(label.trim())}`);
+    return q.length ? `${obsBase}?${q.join('&')}` : obsBase;
+  })();
+
+  const SCALES = [
+    { v: 1, label: 'เล็ก' },
+    { v: 1.4, label: 'ปกติ' },
+    { v: 2, label: 'ใหญ่' },
+    { v: 2.8, label: 'ใหญ่มาก' },
+  ];
 
   async function push(message) {
     const msg = (message ?? text).trim();
@@ -140,8 +160,48 @@ export default function StreamNotifyScreen({ navigation }) {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.label}>OBS Browser Source URL</Text>
-            <Text style={styles.urlBox} numberOfLines={1}>{obsUrl}</Text>
+            <Text style={styles.label}>ตั้งค่าการแสดงผลบนจอ OBS</Text>
+
+            <Text style={styles.optLabel}>ขนาดป้าย</Text>
+            <View style={styles.optRow}>
+              {SCALES.map((s) => (
+                <TouchableOpacity
+                  key={s.v}
+                  style={[styles.optChip, scale === s.v && styles.optChipOn]}
+                  onPress={() => setScale(s.v)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.optChipTxt, scale === s.v && styles.optChipTxtOn]}>{s.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.optLabel}>ตำแหน่ง</Text>
+            <View style={styles.optRow}>
+              {[{ v: 'top', label: 'ด้านบน' }, { v: 'center', label: 'กลางจอ' }].map((p) => (
+                <TouchableOpacity
+                  key={p.v}
+                  style={[styles.optChip, pos === p.v && styles.optChipOn]}
+                  onPress={() => setPos(p.v)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.optChipTxt, pos === p.v && styles.optChipTxtOn]}>{p.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.optLabel}>หัวข้อป้าย (เว้นว่าง = "ประกาศ")</Text>
+            <TextInput
+              style={styles.optInput}
+              value={label}
+              onChangeText={setLabel}
+              placeholder="เช่น แจ้งเตือน, ประกาศสำคัญ"
+              placeholderTextColor={Colors.fg3}
+              maxLength={40}
+            />
+
+            <Text style={[styles.label, { marginTop: 4 }]}>OBS Browser Source URL</Text>
+            <Text style={styles.urlBox} numberOfLines={2}>{obsUrl}</Text>
             <View style={styles.row}>
               <TouchableOpacity style={styles.ghostBtn} onPress={copyUrl} activeOpacity={0.8}>
                 {copied ? <Check size={14} color={Colors.green} /> : <Copy size={14} color={Colors.fg1} />}
@@ -236,6 +296,19 @@ const styles = StyleSheet.create({
   },
   quickTxt: { color: Colors.fg1, fontSize: 12 },
 
+  optLabel: { color: Colors.fg2, fontSize: 12, fontWeight: '600', marginTop: 4 },
+  optRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  optChip: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8,
+    backgroundColor: Colors.bg2, borderWidth: 1, borderColor: Colors.borderDefault,
+  },
+  optChipOn: { borderColor: 'rgba(255,214,107,0.45)', backgroundColor: Colors.accentSoft },
+  optChipTxt: { color: Colors.fg2, fontSize: 12, fontWeight: '600' },
+  optChipTxtOn: { color: Colors.accent },
+  optInput: {
+    backgroundColor: Colors.bg0, borderWidth: 1, borderColor: Colors.borderDefault,
+    borderRadius: 8, color: Colors.fg0, fontSize: 13, padding: 10,
+  },
   urlBox: {
     backgroundColor: Colors.bg0, borderWidth: 1, borderColor: Colors.borderDefault,
     borderRadius: 8, color: Colors.accent, fontSize: 12, padding: 10,
